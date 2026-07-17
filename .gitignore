@@ -1,0 +1,80 @@
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env/
+
+# Environment secrets
+.env
+.env.local
+*.pem
+secrets/
+
+# Python cache / build
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Datasets and audio (never commit)
+data/**
+!data/README.md
+*.flac
+*.wav
+*.mp3
+*.ogg
+*.m4a
+*.aac
+
+# Model checkpoints and weights
+checkpoints/**
+!checkpoints/README.md
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.bin
+*.h5
+*.pkl
+*.joblib
+
+# Generated embeddings / features
+*.npy
+*.npz
+embeddings/
+features/
+**/fusion_features/
+
+# Experiment outputs
+outputs/**
+!outputs/README.md
+runs/
+wandb/
+mlruns/
+lightning_logs/
+
+# Jupyter
+.ipynb_checkpoints/

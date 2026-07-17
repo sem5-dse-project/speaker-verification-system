@@ -1,0 +1,37 @@
+# Quality-conditioned fusion configuration (Member 3)
+seed: 42
+sample_rate: 16000
+embedding_dim: 192
+quality_dim: 5
+
+enhancement:
+  name: frozen  # identity | frozen
+  weights_path: null
+
+noise_augmentation:
+  snr_levels_db: [20, 10, 5, 0]
+  noise_root: data/noise  # MUSAN / RIRS subset (not committed)
+
+quality_features:
+  names:
+    - rms_energy
+    - zero_crossing_rate
+    - spectral_centroid
+    - spectral_flatness
+    - crest_factor
+
+fusion_gate:
+  input_dim: 198  # quality(5) + cosine_distance(1) + abs_diff(192)
+  hidden_dim: 64
+  weights_path: null
+
+train:
+  batch_size: 64
+  epochs: 30
+  learning_rate: 0.001
+  # Full training procedure intentionally not implemented in scaffold
+
+evaluation:
+  paths: [original, enhanced, fixed_50_50, quality_conditioned]
+  snr_conditions_db: [clean, 20, 10, 5, 0]
+  metrics: [eer, far, frr]

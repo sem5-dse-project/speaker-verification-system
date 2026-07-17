@@ -1,0 +1,28 @@
+# Speaker verification configuration (Member 1)
+seed: 42
+sample_rate: 16000
+embedding_dim: 192
+
+encoder:
+  name: ecapa  # mock | xvector | ecapa
+  weights_path: null  # set to local checkpoint path when available
+  allow_mock: true
+
+enrollment:
+  min_utterances: 3
+  template_dir: data/enrollment_templates
+
+trials:
+  protocol_path: data/speaker/trials.csv
+
+scoring:
+  metric: cosine
+  threshold: 0.65  # replace via calibration on a development set
+
+calibration:
+  method: eer  # eer | target_far
+  target_far: 0.01
+
+evaluation:
+  metrics: [eer, far, frr, inference_time]
+  compare_encoders: [xvector, ecapa]

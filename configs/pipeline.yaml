@@ -1,0 +1,28 @@
+# End-to-end pipeline configuration
+seed: 42
+sample_rate: 16000
+embedding_dim: 192
+quality_dim: 5
+
+paths:
+  enrollment_dir: data/enrollment_templates
+  checkpoints_dir: checkpoints
+  outputs_dir: outputs
+
+speaker:
+  config: configs/speaker_verification.yaml
+  encoder_name: ecapa
+  decision_threshold: 0.65
+
+replay:
+  config: configs/replay_detection.yaml
+  threshold: 0.5
+  enabled: true
+
+quality_fusion:
+  config: configs/quality_fusion.yaml
+  enhancer: frozen
+  fusion: quality_conditioned
+
+verification:
+  reject_on_replay: true
