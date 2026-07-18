@@ -40,8 +40,11 @@ Thumbs.db
 desktop.ini
 
 # Datasets and audio (never commit)
-data/**
+data/
 !data/README.md
+**/data/
+!**/data/README.md
+replay-cnn-baseline/data/
 *.flac
 *.wav
 *.mp3
@@ -50,7 +53,7 @@ data/**
 *.aac
 
 # Model checkpoints and weights
-checkpoints/**
+checkpoints/
 !checkpoints/README.md
 *.pt
 *.pth
@@ -69,9 +72,10 @@ features/
 **/fusion_features/
 
 # Experiment outputs
-outputs/**
+outputs/
 !outputs/README.md
 runs/
+**/runs/
 wandb/
 mlruns/
 lightning_logs/
