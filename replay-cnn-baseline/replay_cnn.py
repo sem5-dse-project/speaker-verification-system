@@ -35,6 +35,7 @@ from tqdm import tqdm
 
 
 @dataclass
+#Fixed audio settings used everywhere in the code
 class AudioConfig:
     sample_rate: int = 16000
     seconds: float = 4.0
@@ -49,25 +50,28 @@ class AudioConfig:
 
 
 @dataclass(frozen=True)
+# One row of metadata for one file
 class Record:
     file_id: str
     label: int  # 0 = bona fide/live, 1 = spoof/replay
     speaker_id: str
 
 
+# Protocol files for each split
 PROTOCOL_FILES = {
     "train": "ASVspoof2017_V2_train.trn.txt",
     "dev": "ASVspoof2017_V2_dev.trl.txt",
     "eval": "ASVspoof2017_V2_eval.trl.txt",
 }
 
+# Directories for each split
 SPLIT_DIRS = {
     "train": "ASVspoof2017_V2_train",
     "dev": "ASVspoof2017_V2_dev",
     "eval": "ASVspoof2017_V2_eval",
 }
 
-
+# Sets random seeds so runs are more repeatable.
 def seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -75,7 +79,7 @@ def seed_everything(seed: int) -> None:
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-
+# Resolves the dataset root directory.
 def resolve_dataset_root(path: Path) -> Path:
     """Accept the directory containing the extracted 2017 V2 folders."""
     path = path.expanduser().resolve()
@@ -92,7 +96,7 @@ def resolve_dataset_root(path: Path) -> Path:
         f"{path / 'ASVspoof2017_V2_train'}"
     )
 
-
+# Reads the protocol file for a given split and returns a list of Record objects.
 def read_protocol(dataset_root: Path, split: str) -> list[Record]:
     protocol = dataset_root / "protocol_V2" / PROTOCOL_FILES[split]
     if not protocol.exists():
@@ -103,7 +107,7 @@ def read_protocol(dataset_root: Path, split: str) -> list[Record]:
         for line_number, line in enumerate(handle, start=1):
             fields = line.strip().split()
             if not fields:
-                continue
+                continue    
             if len(fields) != 7:
                 raise ValueError(
                     f"Expected 7 fields at {protocol}:{line_number}, got {len(fields)}"
@@ -116,7 +120,7 @@ def read_protocol(dataset_root: Path, split: str) -> list[Record]:
             records.append(Record(file_id, int(label_text == "spoof"), speaker_id))
     return records
 
-
+# Creates a speaker-disjoint validation set from the official train set.
 def split_by_speaker(
     records: list[Record], validation_fraction: float, seed: int
 ) -> tuple[list[Record], list[Record]]:
@@ -157,7 +161,7 @@ def fix_length(waveform: torch.Tensor, length: int, random_crop: bool) -> torch.
     start = random.randint(0, max_start) if random_crop else max_start // 2
     return waveform[start : start + length]
 
-
+# A dataset loader class for the replay-attack detection task.
 class ReplayDataset(Dataset):
     def __init__(
         self,
@@ -196,7 +200,18 @@ class ReplayDataset(Dataset):
         waveform = fix_length(waveform, self.config.samples, self.training)
         return waveform, torch.tensor(record.label, dtype=torch.float32), record.file_id
 
+# A CNN model for the replay-attack detection task.
+*** **
+Step A - Mel spectrogram
+Raw waveform → Log-Mel image. Then it normalizes each example
 
+Step B - CNN blocks
+A series of convolutional layers that extract features from the Mel spectrogram.
+
+Step C - Classifier
+A fully connected layer that outputs a single score for the replay-attack detection task.
+
+** ***
 class ReplayCNN(nn.Module):
     def __init__(self, config: AudioConfig) -> None:
         super().__init__()
@@ -237,7 +252,7 @@ class ReplayCNN(nn.Module):
         mel = ((mel - mean) / std).unsqueeze(1)
         return self.classifier(self.features(mel)).squeeze(1)
 
-
+# Wraps the dataset into batches
 def make_loader(
     dataset: Dataset,
     batch_size: int,
@@ -254,7 +269,7 @@ def make_loader(
         persistent_workers=workers > 0,
     )
 
-
+# Collects scores for a given model and dataset.
 @torch.inference_mode()
 def collect_scores(
     model: nn.Module, loader: DataLoader, device: torch.device
@@ -270,7 +285,7 @@ def collect_scores(
         file_ids.extend(batch_ids)
     return np.asarray(labels, dtype=int), np.asarray(scores), file_ids
 
-
+# Calculates the Equal Error Rate (EER) and threshold for a given model and dataset.
 def calculate_eer(labels: np.ndarray, scores: np.ndarray) -> tuple[float, float]:
     """Return EER and threshold; higher score means more likely replay."""
     live_scores = scores[labels == 0]
@@ -288,7 +303,7 @@ def calculate_eer(labels: np.ndarray, scores: np.ndarray) -> tuple[float, float]
     eer = float((fpr[index] + replay_miss_rate[index]) / 2.0)
     return eer, float(thresholds[index])
 
-
+# Evaluates the performance of a given model and dataset.
 def evaluate_scores(
     labels: np.ndarray,
     scores: np.ndarray,
@@ -311,7 +326,7 @@ def evaluate_scores(
         "confusion_matrix_live_replay": matrix.tolist(),
     }
 
-
+# Saves the metrics, predictions, and confusion matrix to the output directory.
 def save_artifacts(
     labels: np.ndarray,
     scores: np.ndarray,
@@ -359,7 +374,7 @@ def save_artifacts(
     plt.close(fig)
     return metrics
 
-
+# Trains the model on the training set and calibrates it on the development set.
 def train(args: argparse.Namespace) -> None:
     seed_everything(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
@@ -416,6 +431,7 @@ def train(args: argparse.Namespace) -> None:
     epochs_without_improvement = 0
     checkpoint_path = output_dir / "best_replay_cnn.pt"
 
+    # Trains the model for a given number of epochs.
     for epoch in range(1, args.epochs + 1):
         model.train()
         running_loss = 0.0
@@ -478,7 +494,7 @@ def train(args: argparse.Namespace) -> None:
 
     print(f"Saved best checkpoint to {checkpoint_path}")
 
-
+# Loads a checkpoint from a given path.
 def load_checkpoint(
     path: Path, device: torch.device
 ) -> tuple[ReplayCNN, float, AudioConfig, dict]:
@@ -489,7 +505,7 @@ def load_checkpoint(
     model.eval()
     return model, float(checkpoint["threshold"]), config, checkpoint
 
-
+# Evaluates the model on the official development or evaluation split.
 def evaluate(args: argparse.Namespace) -> None:
     seed_everything(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
@@ -519,7 +535,7 @@ def evaluate(args: argparse.Namespace) -> None:
     )
     print(json.dumps(metrics, indent=2))
 
-
+# Loads an external audio file and returns a tensor.
 def load_external_audio(path: Path, config: AudioConfig) -> torch.Tensor:
     waveform, sample_rate = sf.read(path, dtype="float32", always_2d=True)
     waveform = torch.from_numpy(waveform).mean(dim=1)
@@ -527,7 +543,7 @@ def load_external_audio(path: Path, config: AudioConfig) -> torch.Tensor:
         waveform = torchaudio.functional.resample(waveform, sample_rate, config.sample_rate)
     return fix_length(waveform, config.samples, random_crop=False).unsqueeze(0)
 
-
+# Predicts the replay probability for a given audio file.
 @torch.inference_mode()
 def predict(args: argparse.Namespace) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() and not args.cpu else "cpu")
@@ -543,7 +559,7 @@ def predict(args: argparse.Namespace) -> None:
     }
     print(json.dumps(result, indent=2))
 
-
+# Builds the argument parser.
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
