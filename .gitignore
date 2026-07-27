@@ -64,6 +64,19 @@ checkpoints/
 *.pkl
 *.joblib
 
+# AASIST zero-shot experiment (weights + local scaffolding; keep out of git)
+replay-cnn-baseline/experiments/aasist_zeroshot/
+
+# ASSERT SENet34 PA zero-shot experiment (weights + local scaffolding)
+replay-cnn-baseline/experiments/assert_senet34_pa/
+
+# ECAPA-TDNN speaker baseline (local experiment + pretrained weights)
+ecapa-tdnn-baseline/
+
+# Upstream ASSERT checkout + pretrained weights (local only)
+ASSERT-master/
+**/pretrained_models/
+
 # Generated embeddings / features
 *.npy
 *.npz
@@ -76,6 +89,7 @@ outputs/
 !outputs/README.md
 runs/
 **/runs/
+**/cache/
 wandb/
 mlruns/
 lightning_logs/
