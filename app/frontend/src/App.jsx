@@ -1,7 +1,7 @@
-import Enrollment from './pages/Enrollment.jsx'
+import Login from './pages/Login.jsx'
 
 function App() {
-  return <Enrollment />
+  return <Login />
 }
 
 export default App
