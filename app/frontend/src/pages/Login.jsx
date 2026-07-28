@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { AtSign, LockKeyhole, Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import AuthCard from '../components/AuthCard.jsx'
 import InputField from '../components/InputField.jsx'
+import api from '../services/api.js'
 
 const INITIAL_FORM = {
   username: '',
@@ -10,10 +12,12 @@ const INITIAL_FORM = {
 }
 
 function Login() {
+  const navigate = useNavigate()
   const [form, setForm] = useState(INITIAL_FORM)
   const [showPassword, setShowPassword] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [statusMessage, setStatusMessage] = useState({ type: '', text: '' })
 
   const errors = useMemo(() => {
     const nextErrors = {
@@ -32,7 +36,6 @@ function Login() {
     return nextErrors
   }, [form.username, form.password, submitted])
 
-  const hasErrors = Object.values(errors).some(Boolean)
   const canSubmit = !isSubmitting
 
   const handleFieldChange = (field) => (event) => {
@@ -43,14 +46,32 @@ function Login() {
   const handleSubmit = async (event) => {
     event.preventDefault()
     setSubmitted(true)
+    setStatusMessage({ type: '', text: '' })
 
     if (form.username.trim().length < 3 || form.password.length < 8) {
       return
     }
 
     setIsSubmitting(true)
-    await new Promise((resolve) => setTimeout(resolve, 800))
-    setIsSubmitting(false)
+
+    try {
+      const response = await api.post('/auth/login', {
+        username: form.username.trim(),
+        password: form.password,
+      })
+
+      localStorage.setItem('token', response.data.token)
+      localStorage.setItem('user', JSON.stringify(response.data.user))
+
+      navigate('/dashboard', { replace: true })
+    } catch (error) {
+      setStatusMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Login failed. Please try again.',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -120,12 +141,12 @@ function Login() {
 
             <p className="pt-1 text-center text-sm text-slate-600">
               Don't have an account?{' '}
-              <a
-                href="#"
+              <Link
+                to="/register"
                 className="font-semibold text-blue-600 transition-colors hover:text-blue-500"
               >
                 Create Account
-              </a>
+              </Link>
             </p>
 
             <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2.5 text-sm text-blue-800">
@@ -135,9 +156,9 @@ function Login() {
               </p>
             </div>
 
-            {submitted && !hasErrors && !isSubmitting && (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                Mock authentication successful. Dashboard access is ready.
+            {statusMessage.type === 'error' && (
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                {statusMessage.text}
               </p>
             )}
           </form>

@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { AtSign, LockKeyhole, Eye, EyeOff, Check } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import AuthCard from '../components/AuthCard.jsx'
 import InputField from '../components/InputField.jsx'
 import PasswordStrength from '../components/PasswordStrength.jsx'
+import api from '../services/api.js'
 
 const INITIAL_FORM = {
   username: '',
@@ -10,9 +12,12 @@ const INITIAL_FORM = {
 }
 
 function Register() {
+  const navigate = useNavigate()
   const [form, setForm] = useState(INITIAL_FORM)
   const [showPassword, setShowPassword] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [statusMessage, setStatusMessage] = useState({ type: '', text: '' })
 
   const requirements = useMemo(
     () => [
@@ -62,12 +67,40 @@ function Register() {
     setForm((previous) => ({ ...previous, [field]: value }))
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
     setSubmitted(true)
-  }
+    setStatusMessage({ type: '', text: '' })
 
-  const hasErrors = Object.values(errors).some(Boolean)
+    if (form.username.trim().length < 3 || !requirements.every((requirement) => requirement.valid)) {
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const response = await api.post('/auth/register', {
+        username: form.username.trim(),
+        password: form.password,
+      })
+
+      setStatusMessage({
+        type: 'success',
+        text: response.data?.message || 'User registered successfully',
+      })
+
+      setTimeout(() => {
+        navigate('/login', { replace: true })
+      }, 900)
+    } catch (error) {
+      setStatusMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Registration failed. Please try again.',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <main className="h-screen overflow-hidden bg-gradient-to-b from-slate-50 via-slate-100 to-blue-50/40 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
@@ -132,24 +165,31 @@ function Register() {
 
             <button
               type="submit"
+              disabled={isSubmitting}
               className="mt-1 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200/60 transition-all duration-200 hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-1"
             >
-              Create Account
+              {isSubmitting ? 'Creating Account...' : 'Create Account'}
             </button>
 
             <p className="pt-1 text-center text-sm text-slate-600">
               Already have an account?{' '}
-              <a
-                href="#"
+              <Link
+                to="/login"
                 className="font-semibold text-blue-600 transition-colors hover:text-blue-500"
               >
                 Sign In
-              </a>
+              </Link>
             </p>
 
-            {submitted && !hasErrors && (
+            {statusMessage.type === 'success' && (
               <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                Mock success: account details are valid and ready for backend integration.
+                {statusMessage.text}
+              </p>
+            )}
+
+            {statusMessage.type === 'error' && (
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                {statusMessage.text}
               </p>
             )}
           </form>
