@@ -33,6 +33,22 @@ const initSchema = async () => {
         ON DELETE CASCADE
     )
   `)
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS enrollment_templates (
+      user_id INT PRIMARY KEY,
+      embedding JSON NOT NULL,
+      embedding_dim INT NOT NULL,
+      num_samples INT NOT NULL,
+      threshold FLOAT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_enrollment_templates_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+    )
+  `)
 }
 
 module.exports = {
