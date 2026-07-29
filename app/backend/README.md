@@ -117,6 +117,8 @@ On first successful DB connection, the server creates:
 
 ## API Endpoints
 
+Full request/response docs: see **[API.md](./API.md)**.
+
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `POST` | `/api/auth/register` | No | Register user |
