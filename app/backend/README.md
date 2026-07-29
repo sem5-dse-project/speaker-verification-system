@@ -62,6 +62,8 @@ DB_USER=root
 DB_PASSWORD=your_mysql_password
 DB_NAME=voice_authentication
 JWT_SECRET=replace_with_a_secure_secret
+ML_SERVER_URL=http://localhost:8000
+REQUIRED_ENROLLMENT_SAMPLES=3
 ```
 
 Notes:
@@ -97,6 +99,27 @@ On first successful DB connection, the server creates:
 |-------|---------|
 | `users` | username + hashed password |
 | `voice_samples` | enrollment/verification audio **paths** |
+| `enrollment_templates` | averaged ECAPA **embedding** per user (JSON) |
+
+You only need to create the empty database `voice_authentication` once. Tables are created automatically after clone + `npm run dev`.
+
+### ML server (embeddings)
+
+Speaker embeddings come from the Python service:
+
+```powershell
+cd D:\speaker-verification-system\app\server
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+Add to `.env`:
+
+```env
+ML_SERVER_URL=http://localhost:8000
+REQUIRED_ENROLLMENT_SAMPLES=3
+```
+
+After **3** enrollment uploads, Express calls `/enroll/template` and stores the average embedding in `enrollment_templates`. Verify uses that template via `/verify`.
 
 ## Common errors
 
@@ -107,6 +130,8 @@ On first successful DB connection, the server creates:
 | `Access denied for user 'root'@'localhost'` | Wrong password, or MySQL not allowing that user |
 | `ECONNREFUSED` / cannot connect | MySQL is not running (start XAMPP MySQL) |
 | `Unknown database 'voice_authentication'` | Run the `CREATE DATABASE` step |
+| ML enroll/verify errors / fetch failed | Start Python server on port **8000** (`app/server`) |
+| `No enrollment template found` | Upload **3** enrollment samples first |
 
 ## Scripts
 
@@ -140,7 +165,9 @@ uploads/enrollments/user_<id>/enroll_YYYYMMDD_HHMMSS.wav
 uploads/verifications/user_<id>/verify_YYYYMMDD_HHMMSS.wav
 ```
 
-MySQL stores only the relative `file_path` in `voice_samples`.
+MySQL stores:
+- relative `file_path` in `voice_samples`
+- averaged ECAPA embedding in `enrollment_templates` (after 3 enroll uploads)
 
 ## Project layout
 
