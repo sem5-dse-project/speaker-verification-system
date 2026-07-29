@@ -3,12 +3,12 @@ const cors = require('cors')
 const dotenv = require('dotenv')
 const path = require('path')
 
+dotenv.config()
+
 const { pool, initSchema } = require('./config/db')
 const authRoutes = require('./routes/authRoutes')
 const userRoutes = require('./routes/userRoutes')
 const voiceRoutes = require('./routes/voiceRoutes')
-
-dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000
