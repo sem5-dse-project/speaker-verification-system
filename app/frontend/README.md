@@ -13,7 +13,7 @@ Talks to the Express backend at `http://localhost:5000/api` (see `app/backend`).
 | Login | `/login` | Sign in → JWT saved in `localStorage` |
 | Register | `/register` | Create account |
 | Dashboard | `/dashboard` | Home after login (protected) |
-| Enrollment | `/enrollment` | Record/upload enrollment audio (protected) |
+| Enrollment | `/enrollment` | Record **3** enrollment samples, then upload (protected) |
 | Verification | `/verification` | Record/upload verification audio (protected) |
 
 Stack: **React 19**, **Vite 8**, **React Router**, **Axios**, **Tailwind CSS 4**, **Lucide** icons.
