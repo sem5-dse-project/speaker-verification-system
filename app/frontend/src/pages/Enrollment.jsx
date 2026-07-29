@@ -3,6 +3,7 @@ import { CheckCircle2, AlertCircle } from 'lucide-react'
 import SentenceCard from '../components/SentenceCard.jsx'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
+import api from '../services/api.js'
 
 const SENTENCES = [
   'The quick brown fox jumps over the lazy dog.',
@@ -49,14 +50,26 @@ function Enrollment() {
     setIsSubmitting(true)
     setStatusMessage({ type: '', text: '' })
 
-    // Simulated enrollment state update without backend integration.
-    await new Promise((resolve) => setTimeout(resolve, 900))
+    try {
+      const formData = new FormData()
+      const wavLikeFile = new File([recording.blob], `enroll_${Date.now()}.wav`, {
+        type: 'audio/wav',
+      })
+      formData.append('audio', wavLikeFile)
 
-    setStatusMessage({
-      type: 'success',
-      text: 'Voice enrollment complete. Your recording is ready for backend submission.',
-    })
-    setIsSubmitting(false)
+      const response = await api.post('/voice/enroll', formData)
+      setStatusMessage({
+        type: 'success',
+        text: response.data?.message || 'Voice enrollment complete.',
+      })
+    } catch (error) {
+      setStatusMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Failed to upload enrollment recording.',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
