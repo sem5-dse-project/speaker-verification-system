@@ -4,7 +4,7 @@ Web UI for the voice authentication system. Users can register/login, open a das
 
 Talks to the Express backend at `http://localhost:5000/api` (see `app/backend`).
 
-> **Note:** Enrollment/verification currently upload WAV files to the backend. Full ECAPA accept/reject scoring is planned via a Python ML service later.
+> **Note:** The recorder captures PCM via Web Audio and encodes real 16-bit WAV files (not browser WebM). Enrollment resets previous samples before uploading a new set of 3.
 
 ## Features
 

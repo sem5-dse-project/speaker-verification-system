@@ -26,11 +26,22 @@ function Verification() {
 
       const response = await api.post('/voice/verify', formData)
 
+      const result = response.data?.result
+      const decision =
+        result?.decision ||
+        (result?.accepted === true
+          ? 'ACCEPT'
+          : result?.accepted === false
+            ? 'REJECT'
+            : null)
+      const scoreText =
+        typeof result?.score === 'number' ? ` (score ${result.score.toFixed(3)})` : ''
+
       setStatusMessage({
-        type: 'success',
-        text:
-          response.data?.result ||
-          'Verification request accepted. Verification logic not implemented yet.',
+        type: decision === 'REJECT' ? 'error' : 'success',
+        text: decision
+          ? `Verification ${decision}${scoreText}`
+          : response.data?.message || 'Verification complete.',
       })
     } catch (error) {
       setStatusMessage({

@@ -103,6 +103,9 @@ function Enrollment() {
     setStatusMessage({ type: '', text: '' })
 
     try {
+      // Clear previous (possibly invalid WebM) enrollment files first
+      await api.post('/voice/enroll/reset')
+
       for (let index = 0; index < samples.length; index += 1) {
         const formData = new FormData()
         const file = new File(
@@ -116,14 +119,17 @@ function Enrollment() {
 
       setStatusMessage({
         type: 'success',
-        text: `Enrollment complete. Uploaded ${REQUIRED_SAMPLES} voice samples.`,
+        text: `Enrollment complete. Template saved from ${REQUIRED_SAMPLES} WAV samples.`,
       })
       setSamples([])
       resetRecorder()
     } catch (error) {
       setStatusMessage({
         type: 'error',
-        text: error.response?.data?.message || 'Failed to upload enrollment recordings.',
+        text:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Failed to upload enrollment recordings.',
       })
     } finally {
       setIsSubmitting(false)
