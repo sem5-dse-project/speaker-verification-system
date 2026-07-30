@@ -12,9 +12,11 @@ from ml_server.config import MAX_SECONDS, SAMPLE_RATE
 
 
 def load_audio_bytes(data: bytes, sample_rate: int = SAMPLE_RATE) -> torch.Tensor:
-    """Decode bytes to mono float32 waveform at sample_rate."""
-    audio, sr = sf.read(io.BytesIO(data), dtype="float32", always_2d=True)
-    wave = torch.from_numpy(audio).mean(dim=1)
+    """Decode bytes to mono float32 waveform at sample_rate.
+
+    Prefers soundfile (WAV/FLAC). Falls back to torchaudio when available.
+    """
+    wave, sr = _decode_waveform(data)
     if sr != sample_rate:
         wave = torchaudio.functional.resample(wave, sr, sample_rate)
     if wave.numel() == 0:
@@ -24,3 +26,27 @@ def load_audio_bytes(data: bytes, sample_rate: int = SAMPLE_RATE) -> torch.Tenso
         start = max(0, (wave.numel() - max_len) // 2)
         wave = wave[start : start + max_len]
     return wave
+
+
+def _decode_waveform(data: bytes) -> tuple[torch.Tensor, int]:
+    errors: list[str] = []
+
+    try:
+        audio, sr = sf.read(io.BytesIO(data), dtype="float32", always_2d=True)
+        wave = torch.from_numpy(audio).mean(dim=1)
+        return wave, int(sr)
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"soundfile: {exc}")
+
+    try:
+        wave, sr = torchaudio.load(io.BytesIO(data))
+        if wave.ndim > 1:
+            wave = wave.mean(dim=0)
+        return wave, int(sr)
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"torchaudio: {exc}")
+
+    hint = (
+        "Upload 16-bit PCM WAV (RIFF). Browser WebM is not supported without ffmpeg."
+    )
+    raise ValueError(f"Could not decode audio ({'; '.join(errors)}). {hint}")
