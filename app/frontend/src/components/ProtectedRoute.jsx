@@ -37,4 +37,5 @@ function ProtectedRoute({ children }) {
   return children
 }
 
+export { hasValidToken }
 export default ProtectedRoute

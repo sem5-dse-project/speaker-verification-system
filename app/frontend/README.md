@@ -18,6 +18,25 @@ Talks to the Express backend at `http://localhost:5000/api` (see `app/backend`).
 
 Stack: **React 19**, **Vite 8**, **React Router**, **Axios**, **Tailwind CSS 4**, **Lucide** icons.
 
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Vite dev server (HMR) |
+| `npm run build` | Production build → `dist/` |
+| `npm run preview` | Preview production build |
+| `npm run lint` | Run Oxlint |
+| `npm test` | Run unit tests (Vitest) |
+
+## Unit tests
+
+```powershell
+cd D:\speaker-verification-system\app\frontend
+npm test
+```
+
+Tests cover WAV encoding, auth token checks, password strength, API interceptor, and core UI helpers.
+
 ## Prerequisites
 
 - **Node.js** 18+ (npm included)
@@ -49,15 +68,6 @@ http://localhost:5173
 ```
 
 Open that in the browser. The backend CORS config already allows `http://localhost:5173`.
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start Vite dev server (HMR) |
-| `npm run build` | Production build → `dist/` |
-| `npm run preview` | Preview production build |
-| `npm run lint` | Run Oxlint |
 
 ## How it connects to the backend
 

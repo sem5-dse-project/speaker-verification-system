@@ -64,4 +64,7 @@ const buildUploader = (sampleType) => {
 module.exports = {
   enrollmentUpload: buildUploader('enrollment'),
   verificationUpload: buildUploader('verification'),
+  // Exported for unit tests
+  sampleIndexFromName,
+  toTimestampMs,
 }

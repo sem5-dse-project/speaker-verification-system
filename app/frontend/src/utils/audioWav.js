@@ -49,7 +49,12 @@ export async function blobToWavBlob(blob) {
     throw new Error('No audio blob to convert')
   }
 
-  const header = new Uint8Array(await blob.slice(0, 12).arrayBuffer())
+  const headerSlice = blob.slice(0, 12)
+  const headerBuffer =
+    typeof headerSlice.arrayBuffer === 'function'
+      ? await headerSlice.arrayBuffer()
+      : await new Response(headerSlice).arrayBuffer()
+  const header = new Uint8Array(headerBuffer)
   const isRiffWav =
     header.length >= 12 &&
     String.fromCharCode(...header.slice(0, 4)) === 'RIFF' &&

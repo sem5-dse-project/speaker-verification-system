@@ -42,4 +42,5 @@ function PasswordStrength({ password }) {
   )
 }
 
+export { getStrengthFromPassword }
 export default PasswordStrength

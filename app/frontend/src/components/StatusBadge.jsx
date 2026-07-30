@@ -1,3 +1,4 @@
+import React from 'react'
 import { CheckCircle2, Circle, Mic } from 'lucide-react'
 
 const STATUS_MAP = {

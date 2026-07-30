@@ -123,6 +123,21 @@ Copy `.env.example` to `.env` and set local dataset/checkpoint paths as needed.
 
 ## Running tests
 
+App unit tests (also run automatically on PRs via GitHub Actions — see `.github/workflows/ci.yml`):
+
+```bash
+# Express backend
+cd app/backend && npm ci && npm test
+
+# React frontend
+cd app/frontend && npm ci && npm test
+
+# Python ML server
+cd app/server && pip install -r requirements.txt -r requirements-dev.txt && pytest
+```
+
+Root / research-area tests:
+
 ```bash
 pytest
 ```

@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
 import api from '../services/api.js'
+import { formatVerificationResult } from '../utils/verificationResult.js'
 
 function Verification() {
   const [recording, setRecording] = useState(null)
@@ -25,24 +26,11 @@ function Verification() {
       formData.append('audio', wavLikeFile)
 
       const response = await api.post('/voice/verify', formData)
-
-      const result = response.data?.result
-      const decision =
-        result?.decision ||
-        (result?.accepted === true
-          ? 'ACCEPT'
-          : result?.accepted === false
-            ? 'REJECT'
-            : null)
-      const scoreText =
-        typeof result?.score === 'number' ? ` (score ${result.score.toFixed(3)})` : ''
-
-      setStatusMessage({
-        type: decision === 'REJECT' ? 'error' : 'success',
-        text: decision
-          ? `Verification ${decision}${scoreText}`
-          : response.data?.message || 'Verification complete.',
-      })
+      const formatted = formatVerificationResult(
+        response.data?.result,
+        response.data?.message || 'Verification complete.',
+      )
+      setStatusMessage(formatted)
     } catch (error) {
       setStatusMessage({
         type: 'error',

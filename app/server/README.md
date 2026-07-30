@@ -25,10 +25,21 @@ cd D:\speaker-verification-system\app\server
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 copy .env.example .env
 ```
 
 First request downloads ECAPA weights into `pretrained_models/` (gitignored).
+
+## Unit tests
+
+```powershell
+cd D:\speaker-verification-system\app\server
+.\.venv\Scripts\Activate.ps1
+pytest
+```
+
+Tests cover scoring, WAV decode, schemas, and FastAPI routes with the ECAPA encoder **mocked** (no model download required).
 
 ## Run
 
