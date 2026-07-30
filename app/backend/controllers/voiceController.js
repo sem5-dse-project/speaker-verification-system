@@ -2,6 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const voiceModel = require('../models/voiceModel')
 const templateModel = require('../models/templateModel')
+const verificationLogModel = require('../models/verificationLogModel')
 const mlClient = require('../services/mlClient')
 
 const REQUIRED_ENROLLMENT_SAMPLES = Number(process.env.REQUIRED_ENROLLMENT_SAMPLES || 3)
@@ -144,6 +145,15 @@ const uploadVerification = async (req, res) => {
       template.threshold,
     )
 
+    const log = await verificationLogModel.createVerificationLog({
+      userId: req.user.id,
+      voiceSampleId: sample.id,
+      score: mlResult.score,
+      threshold: mlResult.threshold,
+      accepted: mlResult.accepted,
+      decision: mlResult.decision,
+    })
+
     return res.status(201).json({
       success: true,
       message: 'Verification complete',
@@ -154,6 +164,7 @@ const uploadVerification = async (req, res) => {
         accepted: mlResult.accepted,
         decision: mlResult.decision,
       },
+      log,
     })
   } catch (error) {
     return res.status(500).json({
@@ -168,9 +179,13 @@ const getHistory = async (req, res) => {
   try {
     const history = await voiceModel.getVoiceHistoryByUserId(req.user.id)
     const template = await templateModel.getTemplateByUserId(req.user.id)
+    const verification_logs = await verificationLogModel.getVerificationLogsByUserId(
+      req.user.id,
+    )
     return res.json({
       success: true,
       history,
+      verification_logs,
       template: template
         ? {
             user_id: template.user_id,
@@ -190,9 +205,30 @@ const getHistory = async (req, res) => {
   }
 }
 
+const getVerificationLogs = async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 50
+    const logs = await verificationLogModel.getVerificationLogsByUserId(
+      req.user.id,
+      limit,
+    )
+    return res.json({
+      success: true,
+      logs,
+    })
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch verification logs',
+      error: error.message,
+    })
+  }
+}
+
 module.exports = {
   resetEnrollment,
   uploadEnrollment,
   uploadVerification,
   getHistory,
+  getVerificationLogs,
 }

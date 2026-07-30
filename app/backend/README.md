@@ -100,6 +100,7 @@ On first successful DB connection, the server creates:
 | `users` | username + hashed password |
 | `voice_samples` | enrollment/verification audio **paths** |
 | `enrollment_templates` | averaged ECAPA **embedding** per user (JSON) |
+| `verification_logs` | verify **score / threshold / decision** history |
 
 You only need to create the empty database `voice_authentication` once. Tables are created automatically after clone + `npm run dev`.
 
@@ -150,7 +151,8 @@ Full request/response docs: see **[API.md](./API.md)**.
 | `POST` | `/api/auth/login` | No | Login → JWT |
 | `GET` | `/api/users/profile` | Bearer | Current user profile |
 | `POST` | `/api/voice/enroll` | Bearer + `audio` file | Save enrollment WAV |
-| `POST` | `/api/voice/verify` | Bearer + `audio` file | Save verification WAV |
+| `POST` | `/api/voice/verify` | Bearer + `audio` file | Verify + save score log |
+| `GET` | `/api/voice/verification-logs` | Bearer | Verification score history |
 | `GET` | `/api/voice/history` | Bearer | Sample history |
 | `GET` | `/api/health` | No | Health check |
 
@@ -168,6 +170,7 @@ uploads/verifications/user_<id>/verify_YYYYMMDD_HHMMSS.wav
 MySQL stores:
 - relative `file_path` in `voice_samples`
 - averaged ECAPA embedding in `enrollment_templates` (after 3 enroll uploads)
+- verify `score` / `threshold` / `decision` in `verification_logs`
 
 ## Project layout
 

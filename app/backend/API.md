@@ -23,6 +23,7 @@ Get the token from `POST /api/auth/login`.
 | `POST` | `/api/voice/enroll/reset` | Bearer | Clear enrollment samples + template |
 | `POST` | `/api/voice/enroll` | Bearer | Upload enrollment WAV |
 | `POST` | `/api/voice/verify` | Bearer | Upload verification WAV |
+| `GET` | `/api/voice/verification-logs` | Bearer | List saved verify results |
 | `GET` | `/api/voice/history` | Bearer | List uploaded samples |
 
 ---
@@ -294,9 +295,21 @@ Content-Type: multipart/form-data
     "threshold": 0.25,
     "accepted": true,
     "decision": "ACCEPT"
+  },
+  "log": {
+    "id": 1,
+    "user_id": 1,
+    "voice_sample_id": 2,
+    "score": 0.72,
+    "threshold": 0.25,
+    "accepted": true,
+    "decision": "ACCEPT",
+    "created_at": "2026-07-30T00:16:00.000Z"
   }
 }
 ```
+
+The `log` row is also stored in MySQL `verification_logs`.
 
 **Errors**
 
@@ -312,6 +325,53 @@ Content-Type: multipart/form-data
 curl -X POST http://localhost:5000/api/voice/verify ^
   -H "Authorization: Bearer <token>" ^
   -F "audio=@D:\path\to\probe.wav"
+```
+
+---
+
+### `GET /api/voice/verification-logs`
+
+List saved verification results for the current user (newest first). Optional query: `?limit=50`.
+
+**Headers**
+
+```http
+Authorization: Bearer <token>
+```
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "logs": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "voice_sample_id": 2,
+      "file_path": "uploads/verifications/user_1/verify_u1_s1_20260730_001600142_a3f2c1.wav",
+      "score": 0.72,
+      "threshold": 0.25,
+      "accepted": true,
+      "decision": "ACCEPT",
+      "created_at": "2026-07-30T00:16:00.000Z"
+    }
+  ]
+}
+```
+
+**Errors**
+
+| Status | When |
+|--------|------|
+| `401` | Missing / invalid token |
+| `500` | Server / DB error |
+
+**curl**
+
+```bash
+curl "http://localhost:5000/api/voice/verification-logs?limit=20" ^
+  -H "Authorization: Bearer <token>"
 ```
 
 ---
@@ -345,6 +405,19 @@ Authorization: Bearer <token>
       "file_path": "uploads/enrollments/user_1/enroll_u1_s1_20260730_001530142_a3f2c1.wav",
       "sample_type": "enrollment",
       "created_at": "2026-07-30T00:15:30.000Z"
+    }
+  ],
+  "verification_logs": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "voice_sample_id": 2,
+      "file_path": "uploads/verifications/user_1/verify_u1_s1_20260730_001600142_a3f2c1.wav",
+      "score": 0.72,
+      "threshold": 0.25,
+      "accepted": true,
+      "decision": "ACCEPT",
+      "created_at": "2026-07-30T00:16:00.000Z"
     }
   ]
 }
