@@ -20,6 +20,7 @@ Get the token from `POST /api/auth/login`.
 | `POST` | `/api/auth/register` | No | Register user |
 | `POST` | `/api/auth/login` | No | Login, returns JWT |
 | `GET` | `/api/users/profile` | Bearer | Current user profile |
+| `POST` | `/api/voice/enroll/reset` | Bearer | Clear enrollment samples + template |
 | `POST` | `/api/voice/enroll` | Bearer | Upload enrollment WAV |
 | `POST` | `/api/voice/verify` | Bearer | Upload verification WAV |
 | `GET` | `/api/voice/history` | Bearer | List uploaded samples |
@@ -186,6 +187,20 @@ curl http://localhost:5000/api/users/profile ^
 ## Voice
 
 Audio must be **WAV**. Form field name must be **`audio`**. Max size: **20 MB**.
+
+### `POST /api/voice/enroll/reset`
+
+Deletes all enrollment samples for the user (and their files) and clears `enrollment_templates`. The frontend calls this before uploading a fresh set of 3 samples.
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "message": "Enrollment samples and template cleared",
+  "deleted_samples": 3
+}
+```
 
 ### `POST /api/voice/enroll`
 

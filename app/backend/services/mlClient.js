@@ -4,16 +4,44 @@ const { Blob } = require('buffer')
 
 const ML_SERVER_URL = (process.env.ML_SERVER_URL || 'http://localhost:8000').replace(/\/$/, '')
 
+const isPcmWavFile = (absolutePath) => {
+  try {
+    const fd = fs.openSync(absolutePath, 'r')
+    const header = Buffer.alloc(12)
+    fs.readSync(fd, header, 0, 12, 0)
+    fs.closeSync(fd)
+    return (
+      header.toString('ascii', 0, 4) === 'RIFF' &&
+      header.toString('ascii', 8, 12) === 'WAVE'
+    )
+  } catch {
+    return false
+  }
+}
+
+const filePart = (absolutePath) => {
+  const buffer = fs.readFileSync(absolutePath)
+  // Node Blob needs a Uint8Array view for reliable multipart bytes
+  const bytes = new Uint8Array(buffer)
+  return new Blob([bytes], { type: 'audio/wav' })
+}
+
 const buildEnrollmentTemplate = async (absoluteFilePaths) => {
   if (!absoluteFilePaths?.length) {
     throw new Error('At least one enrollment audio file is required')
   }
 
+  for (const filePath of absoluteFilePaths) {
+    if (!isPcmWavFile(filePath)) {
+      throw new Error(
+        `Enrollment file is not a valid WAV (got non-RIFF audio, often old WebM): ${path.basename(filePath)}. Reset enrollment and record again.`,
+      )
+    }
+  }
+
   const form = new FormData()
   for (const filePath of absoluteFilePaths) {
-    const buffer = fs.readFileSync(filePath)
-    const blob = new Blob([buffer], { type: 'audio/wav' })
-    form.append('files', blob, path.basename(filePath))
+    form.append('files', filePart(filePath), path.basename(filePath))
   }
 
   const response = await fetch(`${ML_SERVER_URL}/enroll/template`, {
@@ -31,9 +59,14 @@ const buildEnrollmentTemplate = async (absoluteFilePaths) => {
 }
 
 const verifyAgainstTemplate = async (absoluteFilePath, embedding, threshold = null) => {
-  const buffer = fs.readFileSync(absoluteFilePath)
+  if (!isPcmWavFile(absoluteFilePath)) {
+    throw new Error(
+      'Verification file is not a valid WAV. Re-record and try again.',
+    )
+  }
+
   const form = new FormData()
-  form.append('file', new Blob([buffer], { type: 'audio/wav' }), path.basename(absoluteFilePath))
+  form.append('file', filePart(absoluteFilePath), path.basename(absoluteFilePath))
   form.append('embedding', JSON.stringify(embedding))
   if (threshold !== null && threshold !== undefined) {
     form.append('threshold', String(threshold))
@@ -55,6 +88,7 @@ const verifyAgainstTemplate = async (absoluteFilePath, embedding, threshold = nu
 
 module.exports = {
   ML_SERVER_URL,
+  isPcmWavFile,
   buildEnrollmentTemplate,
   verifyAgainstTemplate,
 }

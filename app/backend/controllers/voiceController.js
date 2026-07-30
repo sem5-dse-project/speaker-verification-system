@@ -1,3 +1,4 @@
+const fs = require('fs')
 const path = require('path')
 const voiceModel = require('../models/voiceModel')
 const templateModel = require('../models/templateModel')
@@ -11,12 +12,47 @@ const toRelativePath = (absolutePath) =>
 
 const toAbsolutePath = (relativePath) => path.join(BACKEND_ROOT, relativePath)
 
+const resetEnrollment = async (req, res) => {
+  try {
+    const deleted = await voiceModel.deleteEnrollmentSamples(
+      req.user.id,
+      toAbsolutePath,
+    )
+    await templateModel.deleteTemplateByUserId(req.user.id)
+
+    return res.json({
+      success: true,
+      message: 'Enrollment samples and template cleared',
+      deleted_samples: deleted,
+    })
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to reset enrollment',
+      error: error.message,
+    })
+  }
+}
+
 const uploadEnrollment = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
         success: false,
         message: 'WAV file is required',
+      })
+    }
+
+    if (!mlClient.isPcmWavFile(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path)
+      } catch {
+        /* ignore */
+      }
+      return res.status(400).json({
+        success: false,
+        message:
+          'Uploaded file is not a valid PCM WAV. Refresh the page and record again.',
       })
     }
 
@@ -155,6 +191,7 @@ const getHistory = async (req, res) => {
 }
 
 module.exports = {
+  resetEnrollment,
   uploadEnrollment,
   uploadVerification,
   getHistory,
