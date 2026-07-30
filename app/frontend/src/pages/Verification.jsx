@@ -19,7 +19,7 @@ function Verification() {
 
     try {
       const formData = new FormData()
-      const wavLikeFile = new File([recording.blob], `verify_${Date.now()}.wav`, {
+      const wavLikeFile = new File([recording.blob], `verify_1_${Date.now()}.wav`, {
         type: 'audio/wav',
       })
       formData.append('audio', wavLikeFile)

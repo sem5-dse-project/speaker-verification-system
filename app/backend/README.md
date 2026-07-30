@@ -161,7 +161,7 @@ CORS is configured for the Vite frontend at `http://localhost:5173`.
 Audio files are stored on **disk only** (not as BLOBs in MySQL):
 
 ```text
-uploads/enrollments/user_<id>/enroll_YYYYMMDD_HHMMSS.wav
+uploads/enrollments/user_<id>/enroll_u<id>_s<n>_YYYYMMDD_HHMMSSmmm_<hex>.wav
 uploads/verifications/user_<id>/verify_YYYYMMDD_HHMMSS.wav
 ```
 

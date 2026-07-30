@@ -1,8 +1,9 @@
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
 const multer = require('multer')
 
-const toTimestamp = () => {
+const toTimestampMs = () => {
   const now = new Date()
   const yyyy = now.getFullYear()
   const mm = String(now.getMonth() + 1).padStart(2, '0')
@@ -10,7 +11,15 @@ const toTimestamp = () => {
   const hh = String(now.getHours()).padStart(2, '0')
   const min = String(now.getMinutes()).padStart(2, '0')
   const ss = String(now.getSeconds()).padStart(2, '0')
-  return `${yyyy}${mm}${dd}_${hh}${min}${ss}`
+  const ms = String(now.getMilliseconds()).padStart(3, '0')
+  return `${yyyy}${mm}${dd}_${hh}${min}${ss}${ms}`
+}
+
+const shortId = () => crypto.randomBytes(3).toString('hex')
+
+const sampleIndexFromName = (originalName) => {
+  const match = String(originalName || '').match(/(?:enroll|verify)[_-]?(\d+)/i)
+  return match ? match[1] : null
 }
 
 const buildUploader = (sampleType) => {
@@ -21,9 +30,16 @@ const buildUploader = (sampleType) => {
       fs.mkdirSync(userDir, { recursive: true })
       cb(null, userDir)
     },
-    filename: (_req, _file, cb) => {
+    filename: (req, file, cb) => {
       const prefix = sampleType === 'enrollment' ? 'enroll' : 'verify'
-      cb(null, `${prefix}_${toTimestamp()}.wav`)
+      const userId = req.user?.id ?? 'unknown'
+      const sampleIdx = sampleIndexFromName(file.originalname)
+      const samplePart = sampleIdx ? `s${sampleIdx}` : 's'
+      // Example: enroll_u1_s2_20260730_083915142_a3f2c1.wav
+      cb(
+        null,
+        `${prefix}_u${userId}_${samplePart}_${toTimestampMs()}_${shortId()}.wav`,
+      )
     },
   })
 

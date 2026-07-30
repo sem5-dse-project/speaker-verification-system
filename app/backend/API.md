@@ -228,7 +228,7 @@ Content-Type: multipart/form-data
   "sample": {
     "id": 1,
     "user_id": 1,
-    "file_path": "uploads/enrollments/user_1/enroll_20260730_001530.wav",
+    "file_path": "uploads/enrollments/user_1/enroll_u1_s1_20260730_001530142_a3f2c1.wav",
     "sample_type": "enrollment"
   },
   "enrollment_count": 1,
@@ -342,7 +342,7 @@ Authorization: Bearer <token>
     {
       "id": 1,
       "user_id": 1,
-      "file_path": "uploads/enrollments/user_1/enroll_20260730_001530.wav",
+      "file_path": "uploads/enrollments/user_1/enroll_u1_s1_20260730_001530142_a3f2c1.wav",
       "sample_type": "enrollment",
       "created_at": "2026-07-30T00:15:30.000Z"
     }
