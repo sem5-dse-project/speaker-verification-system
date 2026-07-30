@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Mic, PauseCircle, PlayCircle, Trash2 } from 'lucide-react'
 import PrimaryButton from './PrimaryButton.jsx'
 import StatusBadge from './StatusBadge.jsx'
+import { floatSamplesToWavBlob } from '../utils/audioWav.js'
 
 const formatSeconds = (seconds) => {
   const mins = Math.floor(seconds / 60)
@@ -14,24 +15,52 @@ function Recorder({ onRecordingChange, onRecorderError }) {
   const [seconds, setSeconds] = useState(0)
   const [audioUrl, setAudioUrl] = useState(null)
 
-  const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
   const timerRef = useRef(null)
-  const chunksRef = useRef([])
   const audioRef = useRef(null)
+  const audioContextRef = useRef(null)
+  const processorRef = useRef(null)
+  const sourceRef = useRef(null)
+  const pcmChunksRef = useRef([])
+  const sampleRateRef = useRef(16000)
+  const recordingRef = useRef(false)
 
   const hasRecording = useMemo(() => Boolean(audioUrl), [audioUrl])
+
+  const cleanupAudioGraph = () => {
+    recordingRef.current = false
+
+    try {
+      processorRef.current?.disconnect()
+    } catch {
+      /* ignore */
+    }
+    try {
+      sourceRef.current?.disconnect()
+    } catch {
+      /* ignore */
+    }
+
+    processorRef.current = null
+    sourceRef.current = null
+
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {})
+      audioContextRef.current = null
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+  }
 
   useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current)
       }
-
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop())
-      }
-
+      cleanupAudioGraph()
       if (audioUrl) {
         URL.revokeObjectURL(audioUrl)
       }
@@ -53,8 +82,14 @@ function Recorder({ onRecordingChange, onRecorderError }) {
 
   const handleStartRecording = async () => {
     try {
-      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      if (!navigator.mediaDevices?.getUserMedia) {
         onRecorderError('This browser does not support audio recording.')
+        return
+      }
+
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      if (!AudioCtx) {
+        onRecorderError('Web Audio API is not available in this browser.')
         return
       }
 
@@ -65,43 +100,50 @@ function Recorder({ onRecordingChange, onRecorderError }) {
 
       onRecordingChange(null)
       onRecorderError('')
+      cleanupAudioGraph()
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: 1,
+        },
+      })
+
+      const audioContext = new AudioCtx()
+      const source = audioContext.createMediaStreamSource(stream)
+      // ScriptProcessor is deprecated but widely supported for PCM capture.
+      const processor = audioContext.createScriptProcessor(4096, 1, 1)
+
+      pcmChunksRef.current = []
+      sampleRateRef.current = audioContext.sampleRate
+      recordingRef.current = true
+
+      processor.onaudioprocess = (event) => {
+        if (!recordingRef.current) {
+          return
+        }
+        const input = event.inputBuffer.getChannelData(0)
+        pcmChunksRef.current.push(new Float32Array(input))
+      }
+
+      source.connect(processor)
+      // Keep the graph alive; mute output to avoid feedback.
+      const gain = audioContext.createGain()
+      gain.gain.value = 0
+      processor.connect(gain)
+      gain.connect(audioContext.destination)
 
       streamRef.current = stream
-      mediaRecorderRef.current = recorder
-      chunksRef.current = []
+      audioContextRef.current = audioContext
+      sourceRef.current = source
+      processorRef.current = processor
+
       setSeconds(0)
       setStatus('recording')
       startTimer()
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data)
-        }
-      }
-
-      recorder.onstop = () => {
-        stopTimer()
-        setStatus('complete')
-
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        const nextAudioUrl = URL.createObjectURL(audioBlob)
-
-        setAudioUrl(nextAudioUrl)
-        onRecordingChange({ blob: audioBlob, url: nextAudioUrl })
-
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop())
-          streamRef.current = null
-        }
-
-        mediaRecorderRef.current = null
-      }
-
-      recorder.start()
     } catch {
+      cleanupAudioGraph()
       setStatus('ready')
       stopTimer()
       onRecorderError('Microphone access failed. Please allow permissions and try again.')
@@ -109,8 +151,44 @@ function Recorder({ onRecordingChange, onRecorderError }) {
   }
 
   const handleStopRecording = () => {
-    if (mediaRecorderRef.current?.state === 'recording') {
-      mediaRecorderRef.current.stop()
+    if (status !== 'recording') {
+      return
+    }
+
+    stopTimer()
+    recordingRef.current = false
+
+    try {
+      const chunks = pcmChunksRef.current
+      const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+
+      if (totalLength < sampleRateRef.current * 0.3) {
+        cleanupAudioGraph()
+        setStatus('ready')
+        onRecorderError('Recording too short. Please speak for at least half a second.')
+        return
+      }
+
+      const merged = new Float32Array(totalLength)
+      let offset = 0
+      for (const chunk of chunks) {
+        merged.set(chunk, offset)
+        offset += chunk.length
+      }
+
+      const audioBlob = floatSamplesToWavBlob(merged, sampleRateRef.current)
+      const nextAudioUrl = URL.createObjectURL(audioBlob)
+
+      cleanupAudioGraph()
+      setAudioUrl(nextAudioUrl)
+      setStatus('complete')
+      onRecordingChange({ blob: audioBlob, url: nextAudioUrl })
+    } catch (error) {
+      cleanupAudioGraph()
+      setStatus('ready')
+      setAudioUrl(null)
+      onRecordingChange(null)
+      onRecorderError(error.message || 'Failed to encode WAV recording.')
     }
   }
 
@@ -122,6 +200,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
 
   const handleDeleteRecording = () => {
     stopTimer()
+    cleanupAudioGraph()
 
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl)

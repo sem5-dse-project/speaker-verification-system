@@ -20,8 +20,10 @@ Get the token from `POST /api/auth/login`.
 | `POST` | `/api/auth/register` | No | Register user |
 | `POST` | `/api/auth/login` | No | Login, returns JWT |
 | `GET` | `/api/users/profile` | Bearer | Current user profile |
+| `POST` | `/api/voice/enroll/reset` | Bearer | Clear enrollment samples + template |
 | `POST` | `/api/voice/enroll` | Bearer | Upload enrollment WAV |
 | `POST` | `/api/voice/verify` | Bearer | Upload verification WAV |
+| `GET` | `/api/voice/verification-logs` | Bearer | List saved verify results |
 | `GET` | `/api/voice/history` | Bearer | List uploaded samples |
 
 ---
@@ -187,6 +189,20 @@ curl http://localhost:5000/api/users/profile ^
 
 Audio must be **WAV**. Form field name must be **`audio`**. Max size: **20 MB**.
 
+### `POST /api/voice/enroll/reset`
+
+Deletes all enrollment samples for the user (and their files) and clears `enrollment_templates`. The frontend calls this before uploading a fresh set of 3 samples.
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "message": "Enrollment samples and template cleared",
+  "deleted_samples": 3
+}
+```
+
 ### `POST /api/voice/enroll`
 
 Upload an enrollment sample. File is saved under `uploads/enrollments/user_<id>/`.
@@ -204,21 +220,26 @@ Content-Type: multipart/form-data
 |-------|------|----------|
 | `audio` | file (`.wav`) | Yes |
 
-**Response `201`**
+**Response `201`** (after 1st/2nd sample — template still pending)
 
 ```json
 {
   "success": true,
-  "message": "Enrollment audio uploaded successfully",
+  "message": "Enrollment audio uploaded (1/3 samples)",
   "sample": {
     "id": 1,
     "user_id": 1,
-    "file_path": "uploads/enrollments/user_1/enroll_20260730_001530.wav",
-    "sample_type": "enrollment",
-    "created_at": "2026-07-30T00:15:30.000Z"
-  }
+    "file_path": "uploads/enrollments/user_1/enroll_u1_s1_20260730_001530142_a3f2c1.wav",
+    "sample_type": "enrollment"
+  },
+  "enrollment_count": 1,
+  "required_samples": 3,
+  "template_status": "pending",
+  "template": null
 }
 ```
+
+After the **3rd** enrollment sample (with Python ML server running), `template_status` becomes `"ready"` and MySQL stores the averaged embedding in `enrollment_templates`.
 
 **Errors**
 
@@ -242,7 +263,7 @@ curl -X POST http://localhost:5000/api/voice/enroll ^
 
 Upload a verification sample. File is saved under `uploads/verifications/user_<id>/`.
 
-> Speaker matching (ECAPA cosine / accept-reject) is **not implemented yet** in this Express service. The endpoint currently stores the file and returns a placeholder result.
+> Requires a stored enrollment template (built after 3 enrollment uploads) and the Python ML server on `ML_SERVER_URL`.
 
 **Headers**
 
@@ -262,17 +283,33 @@ Content-Type: multipart/form-data
 ```json
 {
   "success": true,
-  "message": "Audio uploaded successfully",
-  "result": "Verification logic not implemented yet",
+  "message": "Verification complete",
   "sample": {
     "id": 2,
     "user_id": 1,
     "file_path": "uploads/verifications/user_1/verify_20260730_001600.wav",
-    "sample_type": "verification",
+    "sample_type": "verification"
+  },
+  "result": {
+    "score": 0.72,
+    "threshold": 0.25,
+    "accepted": true,
+    "decision": "ACCEPT"
+  },
+  "log": {
+    "id": 1,
+    "user_id": 1,
+    "voice_sample_id": 2,
+    "score": 0.72,
+    "threshold": 0.25,
+    "accepted": true,
+    "decision": "ACCEPT",
     "created_at": "2026-07-30T00:16:00.000Z"
   }
 }
 ```
+
+The `log` row is also stored in MySQL `verification_logs`.
 
 **Errors**
 
@@ -288,6 +325,53 @@ Content-Type: multipart/form-data
 curl -X POST http://localhost:5000/api/voice/verify ^
   -H "Authorization: Bearer <token>" ^
   -F "audio=@D:\path\to\probe.wav"
+```
+
+---
+
+### `GET /api/voice/verification-logs`
+
+List saved verification results for the current user (newest first). Optional query: `?limit=50`.
+
+**Headers**
+
+```http
+Authorization: Bearer <token>
+```
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "logs": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "voice_sample_id": 2,
+      "file_path": "uploads/verifications/user_1/verify_u1_s1_20260730_001600142_a3f2c1.wav",
+      "score": 0.72,
+      "threshold": 0.25,
+      "accepted": true,
+      "decision": "ACCEPT",
+      "created_at": "2026-07-30T00:16:00.000Z"
+    }
+  ]
+}
+```
+
+**Errors**
+
+| Status | When |
+|--------|------|
+| `401` | Missing / invalid token |
+| `500` | Server / DB error |
+
+**curl**
+
+```bash
+curl "http://localhost:5000/api/voice/verification-logs?limit=20" ^
+  -H "Authorization: Bearer <token>"
 ```
 
 ---
@@ -318,9 +402,22 @@ Authorization: Bearer <token>
     {
       "id": 1,
       "user_id": 1,
-      "file_path": "uploads/enrollments/user_1/enroll_20260730_001530.wav",
+      "file_path": "uploads/enrollments/user_1/enroll_u1_s1_20260730_001530142_a3f2c1.wav",
       "sample_type": "enrollment",
       "created_at": "2026-07-30T00:15:30.000Z"
+    }
+  ],
+  "verification_logs": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "voice_sample_id": 2,
+      "file_path": "uploads/verifications/user_1/verify_u1_s1_20260730_001600142_a3f2c1.wav",
+      "score": 0.72,
+      "threshold": 0.25,
+      "accepted": true,
+      "decision": "ACCEPT",
+      "created_at": "2026-07-30T00:16:00.000Z"
     }
   ]
 }

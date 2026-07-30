@@ -1,0 +1,11 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+pretrained_models/
+*.pt
+*.pth
+*.ckpt
+.DS_Store
