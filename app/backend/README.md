@@ -4,6 +4,23 @@ Node/Express API for user auth and voice enroll/verify file handling.
 
 > **Note:** This service stores users and audio **file paths**. Speaker models (ECAPA / replay) are planned as a separate **Python** service later. Tables are created automatically on startup — you only need to create the empty database.
 
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start API with nodemon |
+| `npm start` | Start API once |
+| `npm test` | Run unit tests (Jest) |
+
+## Unit tests
+
+```powershell
+cd D:\speaker-verification-system\app\backend
+npm test
+```
+
+Tests live under `tests/` and mock MySQL / ML / filesystem where needed (no live DB required).
+
 ## Prerequisites
 
 - **Node.js** 18+ (npm included)
