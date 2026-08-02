@@ -34,3 +34,13 @@ class VerifyResponse(BaseModel):
     threshold: float
     accepted: bool
     decision: str
+
+
+class ReplayDetectResponse(BaseModel):
+    success: bool = True
+    score: float
+    threshold: float
+    is_replay: bool
+    accepted: bool
+    decision: str
+    feature_type: str | None = None

@@ -103,3 +103,49 @@ def test_verify_empty_file(client: TestClient):
         files={"file": ("empty.wav", b"", "audio/wav")},
     )
     assert response.status_code == 400
+
+
+def test_replay_detect_live(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    def fake_score_replay(wave, threshold=None, device="cpu"):
+        return {
+            "score": 0.1,
+            "threshold": 0.76,
+            "is_replay": False,
+            "accepted": True,
+            "decision": "LIVE",
+            "feature_type": "inverted_mel",
+        }
+
+    monkeypatch.setattr(main, "score_replay", fake_score_replay)
+    monkeypatch.setattr(main, "REPLAY_ENABLED", True)
+    wav = make_wav_bytes()
+    response = client.post(
+        "/replay/detect",
+        files={"file": ("probe.wav", wav, "audio/wav")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["decision"] == "LIVE"
+    assert body["is_replay"] is False
+
+
+def test_replay_detect_replay(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    def fake_score_replay(wave, threshold=None, device="cpu"):
+        return {
+            "score": 0.9,
+            "threshold": 0.76,
+            "is_replay": True,
+            "accepted": False,
+            "decision": "REPLAY",
+            "feature_type": "inverted_mel",
+        }
+
+    monkeypatch.setattr(main, "score_replay", fake_score_replay)
+    monkeypatch.setattr(main, "REPLAY_ENABLED", True)
+    wav = make_wav_bytes()
+    response = client.post(
+        "/replay/detect",
+        files={"file": ("probe.wav", wav, "audio/wav")},
+    )
+    assert response.status_code == 200
+    assert response.json()["decision"] == "REPLAY"

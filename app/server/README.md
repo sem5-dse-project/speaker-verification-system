@@ -3,7 +3,7 @@
 Stateless ML core for the voice authentication system.
 
 - **Express** (`app/backend`): users, JWT, WAV file storage, MySQL  
-- **This server** (`app/server`): ECAPA embeddings, average enrollment template, cosine verify  
+- **This server** (`app/server`): ECAPA embeddings, average enrollment template, cosine verify, inverted-Mel **replay detect**
 
 Model: [`speechbrain/spkrec-ecapa-voxceleb`](https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb)
 
@@ -15,6 +15,7 @@ Model: [`speechbrain/spkrec-ecapa-voxceleb`](https://huggingface.co/speechbrain/
 | `POST` | `/embed` | One embedding per uploaded file |
 | `POST` | `/enroll/template` | Average template from N enrollment files (use 3) |
 | `POST` | `/verify` | Probe audio + template JSON → score / ACCEPT|REJECT |
+| `POST` | `/replay/detect` | Inverted-Mel CNN → LIVE|REPLAY (gate before verify) |
 
 Interactive docs: `http://localhost:8000/docs`
 
