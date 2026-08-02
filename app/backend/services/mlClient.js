@@ -86,9 +86,40 @@ const verifyAgainstTemplate = async (absoluteFilePath, embedding, threshold = nu
   return data
 }
 
+const REPLAY_DETECTION = String(process.env.REPLAY_DETECTION || 'true').toLowerCase() !== 'false'
+
+const detectReplay = async (absoluteFilePath, threshold = null) => {
+  if (!isPcmWavFile(absoluteFilePath)) {
+    throw new Error(
+      'Verification file is not a valid WAV. Re-record and try again.',
+    )
+  }
+
+  const form = new FormData()
+  form.append('file', filePart(absoluteFilePath), path.basename(absoluteFilePath))
+  if (threshold !== null && threshold !== undefined) {
+    form.append('threshold', String(threshold))
+  }
+
+  const response = await fetch(`${ML_SERVER_URL}/replay/detect`, {
+    method: 'POST',
+    body: form,
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const detail = data.detail || data.message || response.statusText
+    throw new Error(`ML replay/detect failed: ${detail}`)
+  }
+
+  return data
+}
+
 module.exports = {
   ML_SERVER_URL,
+  REPLAY_DETECTION,
   isPcmWavFile,
   buildEnrollmentTemplate,
   verifyAgainstTemplate,
+  detectReplay,
 }

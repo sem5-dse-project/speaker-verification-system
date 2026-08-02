@@ -135,9 +135,10 @@ Add to `.env`:
 ```env
 ML_SERVER_URL=http://localhost:8000
 REQUIRED_ENROLLMENT_SAMPLES=3
+REPLAY_DETECTION=true
 ```
 
-After **3** enrollment uploads, Express calls `/enroll/template` and stores the average embedding in `enrollment_templates`. Verify uses that template via `/verify`.
+After **3** enrollment uploads, Express calls `/enroll/template` and stores the average embedding in `enrollment_templates`. Verify runs **replay detect** first (`/replay/detect`), then speaker match via `/verify` (unless `REPLAY_DETECTION=false`).
 
 ## Common errors
 
