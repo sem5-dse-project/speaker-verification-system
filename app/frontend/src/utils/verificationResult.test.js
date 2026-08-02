@@ -27,6 +27,15 @@ describe('formatVerificationResult', () => {
     })
   })
 
+  it('formats REPLAY as error', () => {
+    expect(
+      formatVerificationResult({ decision: 'REPLAY', score: 0.91, accepted: false }),
+    ).toEqual({
+      type: 'error',
+      text: 'Replay attack detected (score 0.910)',
+    })
+  })
+
   it('falls back when result is empty', () => {
     expect(formatVerificationResult(null, 'Done')).toEqual({
       type: 'success',

@@ -23,3 +23,21 @@ ECAPA_SAVEDIR = Path(
         str(_ROOT / "pretrained_models" / "spkrec-ecapa-voxceleb"),
     )
 )
+
+# Inverted-Mel replay CNN (mixed ASVspoof 2017 + PA2019 for better generalization)
+_REPO_ROOT = _ROOT.parent.parent  # app/server -> repo root
+_DEFAULT_REPLAY_CKPT = (
+    _REPO_ROOT
+    / "replay-cnn-baseline"
+    / "experiments"
+    / "inverted_mel_mixed_2017_pa2019"
+    / "runs"
+    / "inverted_mel_mixed"
+    / "best_inverted_mel_mixed_2017_pa2019.pt"
+)
+REPLAY_ENABLED = os.getenv("REPLAY_ENABLED", "true").lower() in {"1", "true", "yes"}
+REPLAY_CHECKPOINT = Path(
+    os.getenv("REPLAY_CHECKPOINT", str(_DEFAULT_REPLAY_CKPT))
+)
+_raw_replay_thr = os.getenv("REPLAY_THRESHOLD", "").strip()
+REPLAY_THRESHOLD = float(_raw_replay_thr) if _raw_replay_thr else None

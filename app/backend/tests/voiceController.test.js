@@ -15,6 +15,17 @@ const {
 const { mockRes } = require('./helpers')
 
 describe('voiceController', () => {
+  beforeEach(() => {
+    mlClient.REPLAY_DETECTION = true
+    mlClient.detectReplay.mockResolvedValue({
+      score: 0.1,
+      threshold: 0.76,
+      is_replay: false,
+      accepted: true,
+      decision: 'LIVE',
+    })
+  })
+
   describe('uploadVerification', () => {
     it('returns 400 when no file is uploaded', async () => {
       const req = { file: null, user: { id: 1 } }
@@ -50,6 +61,46 @@ describe('voiceController', () => {
         }),
       )
       expect(mlClient.verifyAgainstTemplate).not.toHaveBeenCalled()
+    })
+
+    it('rejects replay before speaker verify', async () => {
+      voiceModel.createVoiceSample.mockResolvedValue({
+        id: 10,
+        user_id: 1,
+        file_path: 'uploads/verifications/user_1/verify.wav',
+        sample_type: 'verification',
+      })
+      templateModel.getTemplateByUserId.mockResolvedValue({
+        user_id: 1,
+        embedding: [0.1, 0.2],
+        threshold: 0.25,
+      })
+      mlClient.detectReplay.mockResolvedValue({
+        score: 0.91,
+        threshold: 0.76,
+        is_replay: true,
+        accepted: false,
+        decision: 'REPLAY',
+      })
+      verificationLogModel.createVerificationLog.mockResolvedValue({
+        id: 5,
+        decision: 'REPLAY',
+      })
+
+      const req = { user: { id: 1 }, file: { path: pathJoinSafe() } }
+      const res = mockRes()
+
+      await uploadVerification(req, res)
+
+      expect(mlClient.verifyAgainstTemplate).not.toHaveBeenCalled()
+      expect(verificationLogModel.createVerificationLog).toHaveBeenCalledWith(
+        expect.objectContaining({ decision: 'REPLAY', accepted: false }),
+      )
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: expect.objectContaining({ decision: 'REPLAY' }),
+        }),
+      )
     })
 
     it('scores audio, saves log, and returns result', async () => {
@@ -90,6 +141,7 @@ describe('voiceController', () => {
 
       await uploadVerification(req, res)
 
+      expect(mlClient.detectReplay).toHaveBeenCalled()
       expect(verificationLogModel.createVerificationLog).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 1,

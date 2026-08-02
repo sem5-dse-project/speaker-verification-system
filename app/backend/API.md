@@ -264,6 +264,7 @@ curl -X POST http://localhost:5000/api/voice/enroll ^
 Upload a verification sample. File is saved under `uploads/verifications/user_<id>/`.
 
 > Requires a stored enrollment template (built after 3 enrollment uploads) and the Python ML server on `ML_SERVER_URL`.
+> With `REPLAY_DETECTION=true` (default), Express calls `/replay/detect` first. Replay → `decision: "REPLAY"` (speaker verify skipped).
 
 **Headers**
 
@@ -278,7 +279,7 @@ Content-Type: multipart/form-data
 |-------|------|----------|
 | `audio` | file (`.wav`) | Yes |
 
-**Response `201`**
+**Response `201`** (live speaker match)
 
 ```json
 {
@@ -289,6 +290,13 @@ Content-Type: multipart/form-data
     "user_id": 1,
     "file_path": "uploads/verifications/user_1/verify_20260730_001600.wav",
     "sample_type": "verification"
+  },
+  "replay": {
+    "score": 0.12,
+    "threshold": 0.765,
+    "is_replay": false,
+    "accepted": true,
+    "decision": "LIVE"
   },
   "result": {
     "score": 0.72,
@@ -309,7 +317,28 @@ Content-Type: multipart/form-data
 }
 ```
 
-The `log` row is also stored in MySQL `verification_logs`.
+**Response `201`** (replay blocked)
+
+```json
+{
+  "success": true,
+  "message": "Verification rejected: replay attack detected",
+  "replay": {
+    "score": 0.91,
+    "threshold": 0.765,
+    "is_replay": true,
+    "decision": "REPLAY"
+  },
+  "result": {
+    "score": 0.91,
+    "threshold": 0.765,
+    "accepted": false,
+    "decision": "REPLAY"
+  }
+}
+```
+
+The `log` row is also stored in MySQL `verification_logs` (`decision` may be `ACCEPT`, `REJECT`, or `REPLAY`).
 
 **Errors**
 

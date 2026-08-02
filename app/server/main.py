@@ -21,12 +21,16 @@ from ml_server.config import (
     ECAPA_SOURCE,
     HOST,
     PORT,
+    REPLAY_CHECKPOINT,
+    REPLAY_ENABLED,
 )
 from ml_server.ecapa import embed_audio_list, load_ecapa_encoder
+from ml_server.replay import score_replay
 from ml_server.schemas import (
     EmbedResponse,
     EnrollTemplateResponse,
     HealthResponse,
+    ReplayDetectResponse,
     VerifyResponse,
 )
 from ml_server.scoring import average_template, cosine_similarity, decide
@@ -76,11 +80,42 @@ async def _read_uploads(files: list[UploadFile]) -> list[bytes]:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
+    replay_note = (
+        f"; replay={'on' if REPLAY_ENABLED else 'off'} ({REPLAY_CHECKPOINT.name})"
+        if REPLAY_CHECKPOINT
+        else ""
+    )
     return HealthResponse(
-        message="ECAPA ML server is running",
+        message=f"ECAPA ML server is running{replay_note}",
         device=DEVICE,
         model=ECAPA_SOURCE,
     )
+
+
+@app.post("/replay/detect", response_model=ReplayDetectResponse)
+async def replay_detect(
+    file: Annotated[UploadFile, File(description="Probe audio (WAV)")],
+    threshold: Annotated[float | None, Form()] = None,
+) -> ReplayDetectResponse:
+    """
+    Score one clip with the inverted-Mel replay CNN.
+
+    decision: LIVE | REPLAY. Express should reject REPLAY before speaker verify.
+    """
+    if not REPLAY_ENABLED:
+        raise HTTPException(status_code=503, detail="Replay detection is disabled")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty audio file")
+
+    try:
+        wave = load_audio_bytes(data)
+        result = score_replay(wave, threshold=threshold, device=DEVICE)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return ReplayDetectResponse(**result)
 
 
 @app.post("/embed", response_model=EmbedResponse)

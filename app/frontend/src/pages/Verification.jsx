@@ -49,7 +49,8 @@ function Verification() {
             Voice Verification
           </h1>
           <p className="text-base text-slate-600 sm:text-lg">
-            Record your voice and submit it for verification.
+            Record your voice and submit it for verification. Replay attacks are blocked first,
+            then your voice is matched to the enrolled template.
           </p>
         </header>
 

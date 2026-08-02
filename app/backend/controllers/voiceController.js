@@ -139,8 +139,39 @@ const uploadVerification = async (req, res) => {
       })
     }
 
+    const absolutePath = toAbsolutePath(relativePath)
+    let replay = null
+
+    if (mlClient.REPLAY_DETECTION) {
+      replay = await mlClient.detectReplay(absolutePath)
+      if (replay.is_replay) {
+        const log = await verificationLogModel.createVerificationLog({
+          userId: req.user.id,
+          voiceSampleId: sample.id,
+          score: replay.score,
+          threshold: replay.threshold,
+          accepted: false,
+          decision: 'REPLAY',
+        })
+
+        return res.status(201).json({
+          success: true,
+          message: 'Verification rejected: replay attack detected',
+          sample,
+          replay,
+          result: {
+            score: replay.score,
+            threshold: replay.threshold,
+            accepted: false,
+            decision: 'REPLAY',
+          },
+          log,
+        })
+      }
+    }
+
     const mlResult = await mlClient.verifyAgainstTemplate(
-      toAbsolutePath(relativePath),
+      absolutePath,
       template.embedding,
       template.threshold,
     )
@@ -158,6 +189,7 @@ const uploadVerification = async (req, res) => {
       success: true,
       message: 'Verification complete',
       sample,
+      replay,
       result: {
         score: mlResult.score,
         threshold: mlResult.threshold,
