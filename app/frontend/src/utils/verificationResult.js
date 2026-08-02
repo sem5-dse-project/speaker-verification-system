@@ -16,8 +16,15 @@ export function formatVerificationResult(result, fallbackMessage = 'Verification
     }
   }
 
+  if (decision === 'REPLAY') {
+    return {
+      type: 'error',
+      text: `Replay attack detected${scoreText}`,
+    }
+  }
+
   return {
-    type: decision === 'REJECT' ? 'error' : 'success',
+    type: decision === 'REJECT' || decision === 'REPLAY' ? 'error' : 'success',
     text: `Verification ${decision}${scoreText}`,
   }
 }
