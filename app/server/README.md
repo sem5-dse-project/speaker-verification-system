@@ -17,6 +17,10 @@ Model: [`speechbrain/spkrec-ecapa-voxceleb`](https://huggingface.co/speechbrain/
 | `POST` | `/verify` | Probe audio + template JSON → score / ACCEPT|REJECT |
 | `POST` | `/replay/detect` | Inverted-Mel CNN → LIVE|REPLAY (gate before verify) |
 
+Default replay weights: mixed ASVspoof **2017 + PA2019** checkpoint  
+(`replay-cnn-baseline/experiments/inverted_mel_mixed_2017_pa2019/.../best_inverted_mel_mixed_2017_pa2019.pt`).  
+Override with `REPLAY_CHECKPOINT` / `REPLAY_THRESHOLD` in `.env`.
+
 Interactive docs: `http://localhost:8000/docs`
 
 ## Setup

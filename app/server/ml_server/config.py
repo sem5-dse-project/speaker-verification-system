@@ -24,16 +24,16 @@ ECAPA_SAVEDIR = Path(
     )
 )
 
-# Inverted-Mel replay CNN (ASVspoof PA2019-trained by default)
+# Inverted-Mel replay CNN (mixed ASVspoof 2017 + PA2019 for better generalization)
 _REPO_ROOT = _ROOT.parent.parent  # app/server -> repo root
 _DEFAULT_REPLAY_CKPT = (
     _REPO_ROOT
     / "replay-cnn-baseline"
     / "experiments"
-    / "inverted_mel_pa2019_full"
+    / "inverted_mel_mixed_2017_pa2019"
     / "runs"
-    / "inverted_mel_pa2019_full"
-    / "best_inverted_mel_pa2019_full.pt"
+    / "inverted_mel_mixed"
+    / "best_inverted_mel_mixed_2017_pa2019.pt"
 )
 REPLAY_ENABLED = os.getenv("REPLAY_ENABLED", "true").lower() in {"1", "true", "yes"}
 REPLAY_CHECKPOINT = Path(
