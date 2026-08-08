@@ -19,7 +19,9 @@ class AudioConfig:
     win_length: int = 400
     hop_length: int = 160
     n_mels: int = 80
-    feature_type: str = "inverted_mel"
+    n_lfcc: int = 60
+    n_filters: int = 128
+    feature_type: str = "lfcc"
 
     @property
     def samples(self) -> int:
@@ -40,7 +42,7 @@ def fix_length(waveform: torch.Tensor, length: int, random_crop: bool) -> torch.
 
 
 class ReplayCNN(nn.Module):
-    """Same CNN as the inverted-Mel experiment; Mel or inverted-Mel front-end."""
+    """Same CNN as the feature-compare experiments; Mel / inverted-Mel / LFCC front-end."""
 
     def __init__(self, config: AudioConfig) -> None:
         super().__init__()
@@ -52,6 +54,8 @@ class ReplayCNN(nn.Module):
             win_length=config.win_length,
             hop_length=config.hop_length,
             n_mels=config.n_mels,
+            n_lfcc=config.n_lfcc,
+            n_filters=config.n_filters,
         )
         self.features = nn.Sequential(
             self.block(1, 16),

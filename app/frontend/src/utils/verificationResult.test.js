@@ -36,6 +36,15 @@ describe('formatVerificationResult', () => {
     })
   })
 
+  it('formats UNCERTAIN as warning', () => {
+    expect(
+      formatVerificationResult({ decision: 'UNCERTAIN', score: 0.72, accepted: false }),
+    ).toEqual({
+      type: 'warning',
+      text: 'Could not confidently check for replay — please re-record (score 0.720)',
+    })
+  })
+
   it('falls back when result is empty', () => {
     expect(formatVerificationResult(null, 'Done')).toEqual({
       type: 'success',

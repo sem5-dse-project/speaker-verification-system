@@ -49,8 +49,8 @@ function Verification() {
             Voice Verification
           </h1>
           <p className="text-base text-slate-600 sm:text-lg">
-            Record your voice and submit it for verification. Replay attacks are blocked first,
-            then your voice is matched to the enrolled template.
+            Record your voice and submit it for verification. Clear replay is blocked, uncertain
+            clips ask you to re-record, then live audio is matched to your enrolled template.
           </p>
         </header>
 
@@ -81,6 +81,13 @@ function Verification() {
 
             {statusMessage.type === 'error' && (
               <p className="flex items-center gap-2 text-rose-700">
+                <AlertCircle className="h-4 w-4" />
+                {statusMessage.text}
+              </p>
+            )}
+
+            {statusMessage.type === 'warning' && (
+              <p className="flex items-center gap-2 text-amber-700">
                 <AlertCircle className="h-4 w-4" />
                 {statusMessage.text}
               </p>

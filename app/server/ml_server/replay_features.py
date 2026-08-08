@@ -1,4 +1,4 @@
-"""Log-Mel and inverted-Mel (I-Mel) spectrogram front-ends.
+"""Log-Mel, inverted-Mel, and LFCC spectrogram front-ends.
 
 Motivated by Li et al., Interspeech 2017:
 "A Study on Replay Attack and Anti-Spoofing for Automatic Speaker Verification"
@@ -6,6 +6,7 @@ Motivated by Li et al., Interspeech 2017:
 Standard Mel warping emphasizes low frequencies.
 Inverted Mel warping emphasizes high frequencies, which often carry
 replay / device cues and can reduce device-related overfitting.
+LFCC uses a linear-frequency filterbank + DCT (often stronger on mixed domains).
 """
 
 from __future__ import annotations
@@ -97,6 +98,46 @@ def create_inverted_mel_filterbank(
     row_sums = fbanks.sum(dim=1, keepdim=True).clamp_min(1e-10)
     fbanks = fbanks / row_sums
     return fbanks
+
+
+def create_linear_filterbank(
+    n_freqs: int,
+    n_filters: int,
+    sample_rate: int,
+    f_min: float = 0.0,
+    f_max: float | None = None,
+) -> torch.Tensor:
+    """Triangular filterbank with linearly spaced center frequencies."""
+    if f_max is None:
+        f_max = sample_rate / 2.0
+    hz_points = torch.linspace(f_min, f_max, n_filters + 2)
+    bins = torch.floor((n_freqs - 1) * hz_points / (sample_rate / 2.0)).long()
+    bins = torch.clamp(bins, 0, n_freqs - 1)
+    fbanks = torch.zeros(n_filters, n_freqs, dtype=torch.float32)
+    for i in range(n_filters):
+        left = int(bins[i].item())
+        center = int(bins[i + 1].item())
+        right = int(bins[i + 2].item())
+        if center == left:
+            center = min(left + 1, n_freqs - 1)
+        if right == center:
+            right = min(center + 1, n_freqs - 1)
+        for j in range(left, center):
+            fbanks[i, j] = (j - left) / max(center - left, 1)
+        for j in range(center, right):
+            fbanks[i, j] = (right - j) / max(right - center, 1)
+    row_sums = fbanks.sum(dim=1, keepdim=True).clamp_min(1e-10)
+    return fbanks / row_sums
+
+
+def create_dct_matrix(n_filters: int, n_lfcc: int) -> torch.Tensor:
+    """DCT-II matrix [n_lfcc, n_filters]."""
+    n = torch.arange(n_filters, dtype=torch.float32)
+    k = torch.arange(n_lfcc, dtype=torch.float32).unsqueeze(1)
+    dct = torch.cos(math.pi / n_filters * (n + 0.5) * k)
+    dct[0] *= 1.0 / math.sqrt(2.0)
+    dct *= math.sqrt(2.0 / n_filters)
+    return dct
 
 
 class LogMelSpectrogram(nn.Module):
@@ -200,6 +241,58 @@ class InvertedLogMelSpectrogram(nn.Module):
         return log_mel.squeeze(0) if squeeze else log_mel
 
 
+class LogLFCC(nn.Module):
+    """Log Linear-Frequency Cepstral Coefficients."""
+
+    def __init__(
+        self,
+        sample_rate: int = 16000,
+        n_fft: int = 512,
+        win_length: int = 400,
+        hop_length: int = 160,
+        n_filters: int = 128,
+        n_lfcc: int = 60,
+        f_min: float = 0.0,
+        f_max: float | None = None,
+    ) -> None:
+        super().__init__()
+        self.n_fft = n_fft
+        self.win_length = win_length
+        self.hop_length = hop_length
+        self.n_lfcc = n_lfcc
+        self.feature_name = "lfcc"
+        f_max = sample_rate / 2.0 if f_max is None else f_max
+        n_freqs = n_fft // 2 + 1
+        fbanks = create_linear_filterbank(
+            n_freqs, n_filters, sample_rate, f_min=f_min, f_max=f_max
+        )
+        dct = create_dct_matrix(n_filters, n_lfcc)
+        self.register_buffer("fbanks", fbanks)
+        self.register_buffer("dct", dct)
+        self.register_buffer("window", torch.hann_window(win_length))
+
+    def forward(self, waveform: torch.Tensor) -> torch.Tensor:
+        squeeze = waveform.ndim == 1
+        if squeeze:
+            waveform = waveform.unsqueeze(0)
+        window = self.window.to(device=waveform.device, dtype=waveform.dtype)
+        stft = torch.stft(
+            waveform,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            win_length=self.win_length,
+            window=window,
+            center=True,
+            return_complex=True,
+        )
+        power = stft.abs().pow(2.0)
+        fbanks = self.fbanks.to(device=power.device, dtype=power.dtype)
+        filt = torch.matmul(fbanks, power).clamp_min(1e-6).log()
+        dct = self.dct.to(device=filt.device, dtype=filt.dtype)
+        lfcc = torch.matmul(dct, filt)
+        return lfcc.squeeze(0) if squeeze else lfcc
+
+
 def build_spectrogram_front_end(
     feature_type: str,
     sample_rate: int = 16000,
@@ -207,8 +300,10 @@ def build_spectrogram_front_end(
     win_length: int = 400,
     hop_length: int = 160,
     n_mels: int = 80,
+    n_lfcc: int = 60,
+    n_filters: int = 128,
 ) -> nn.Module:
-    """Factory for Mel vs inverted-Mel front-ends."""
+    """Factory for Mel / inverted-Mel / LFCC front-ends."""
     key = feature_type.strip().lower().replace("-", "_")
     if key in {"mel", "log_mel", "logmel"}:
         return LogMelSpectrogram(
@@ -226,6 +321,15 @@ def build_spectrogram_front_end(
             hop_length=hop_length,
             n_mels=n_mels,
         )
+    if key in {"lfcc", "log_lfcc", "linear_fcc"}:
+        return LogLFCC(
+            sample_rate=sample_rate,
+            n_fft=n_fft,
+            win_length=win_length,
+            hop_length=hop_length,
+            n_filters=n_filters,
+            n_lfcc=n_lfcc,
+        )
     raise ValueError(
-        f"Unknown feature_type={feature_type!r}. Use 'mel' or 'inverted_mel'."
+        f"Unknown feature_type={feature_type!r}. Use 'mel', 'inverted_mel', or 'lfcc'."
     )

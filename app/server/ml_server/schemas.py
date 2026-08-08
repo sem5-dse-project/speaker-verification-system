@@ -40,6 +40,8 @@ class ReplayDetectResponse(BaseModel):
     success: bool = True
     score: float
     threshold: float
+    threshold_low: float | None = None
+    threshold_high: float | None = None
     is_replay: bool
     accepted: bool
     decision: str

@@ -23,8 +23,15 @@ export function formatVerificationResult(result, fallbackMessage = 'Verification
     }
   }
 
+  if (decision === 'UNCERTAIN') {
+    return {
+      type: 'warning',
+      text: `Could not confidently check for replay — please re-record${scoreText}`,
+    }
+  }
+
   return {
-    type: decision === 'REJECT' || decision === 'REPLAY' ? 'error' : 'success',
+    type: decision === 'REJECT' ? 'error' : 'success',
     text: `Verification ${decision}${scoreText}`,
   }
 }
