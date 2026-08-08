@@ -1,25 +1,17 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
 
 function Dashboard() {
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
 
   const username = useMemo(() => {
-    try {
-      const rawUser = localStorage.getItem('user')
-      if (!rawUser) {
-        return 'User'
-      }
-      const parsed = JSON.parse(rawUser)
-      return parsed.username || 'User'
-    } catch {
-      return 'User'
-    }
-  }, [])
+    return user?.username || 'User'
+  }, [user])
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    logout()
     navigate('/login', { replace: true })
   }
 

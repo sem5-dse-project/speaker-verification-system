@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { AlertCircle, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
 import api from '../services/api.js'
 import { formatVerificationResult } from '../utils/verificationResult.js'
 
 function Verification() {
+  const navigate = useNavigate()
   const [recording, setRecording] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' })
@@ -44,6 +46,17 @@ function Verification() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-100 to-white px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl space-y-6">
+        <div>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
+        </div>
+
         <header className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Voice Verification
