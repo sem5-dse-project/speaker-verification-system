@@ -3,7 +3,7 @@
 Stateless ML core for the voice authentication system.
 
 - **Express** (`app/backend`): users, JWT, WAV file storage, MySQL  
-- **This server** (`app/server`): ECAPA embeddings, average enrollment template, cosine verify, LFCC **replay detect**
+- **This server** (`app/server`): ECAPA embeddings, average enrollment template, cosine verify, inverted-Mel **replay detect**
 
 Model: [`speechbrain/spkrec-ecapa-voxceleb`](https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb)
 
@@ -15,14 +15,15 @@ Model: [`speechbrain/spkrec-ecapa-voxceleb`](https://huggingface.co/speechbrain/
 | `POST` | `/embed` | One embedding per uploaded file |
 | `POST` | `/enroll/template` | Average template from N enrollment files (use 3) |
 | `POST` | `/verify` | Probe audio + template JSON → score / ACCEPT|REJECT |
-| `POST` | `/replay/detect` | LFCC CNN → LIVE\|UNCERTAIN\|REPLAY (gate before verify) |
+| `POST` | `/replay/detect` | Inverted-Mel CNN → LIVE\|UNCERTAIN\|REPLAY (gate before verify) |
 
-Default replay weights: mixed ASVspoof **2017 + PA2019** **LFCC** checkpoint  
-(`replay-cnn-baseline/experiments/lfcc_vs_mel_compare/runs/lfcc/best_lfcc_mixed_2017_pa2019.pt`).  
+Default replay weights: mixed ASVspoof **2017 + PA2019** **inverted-Mel** checkpoint  
+(`replay-cnn-baseline/experiments/inverted_mel_mixed_2017_pa2019/.../best_inverted_mel_mixed_2017_pa2019.pt`).  
+(LFCC is available via `REPLAY_CHECKPOINT` but tends to false-REPLAY on browser mics.)  
 Override with `REPLAY_CHECKPOINT` / `REPLAY_THRESHOLD` / `REPLAY_MARGIN` (or `REPLAY_T_LOW` + `REPLAY_T_HIGH`) in `.env`.
 
 Banding: `score < t_low` → LIVE, `t_low ≤ score < t_high` → UNCERTAIN (re-record), `score ≥ t_high` → REPLAY.  
-Default margin is `0.10` around the checkpoint EER threshold (~0.74 → ~0.64 / ~0.84).
+Default margin is `0.10` around the checkpoint EER threshold.
 
 Interactive docs: `http://localhost:8000/docs`
 

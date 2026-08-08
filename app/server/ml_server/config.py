@@ -24,16 +24,17 @@ ECAPA_SAVEDIR = Path(
     )
 )
 
-# LFCC replay CNN (mixed ASVspoof 2017 + PA2019) — best balanced EER in feature compare
+# Inverted-Mel replay CNN (mixed ASVspoof 2017 + PA2019).
+# Prefer this for the app: LFCC wins ASVspoof tables but over-fires REPLAY on browser mics.
 _REPO_ROOT = _ROOT.parent.parent  # app/server -> repo root
 _DEFAULT_REPLAY_CKPT = (
     _REPO_ROOT
     / "replay-cnn-baseline"
     / "experiments"
-    / "lfcc_vs_mel_compare"
+    / "inverted_mel_mixed_2017_pa2019"
     / "runs"
-    / "lfcc"
-    / "best_lfcc_mixed_2017_pa2019.pt"
+    / "inverted_mel_mixed"
+    / "best_inverted_mel_mixed_2017_pa2019.pt"
 )
 REPLAY_ENABLED = os.getenv("REPLAY_ENABLED", "true").lower() in {"1", "true", "yes"}
 REPLAY_CHECKPOINT = Path(

@@ -72,7 +72,7 @@ def get_replay_detector(device: str = DEVICE):
     if not ckpt_path.is_file():
         raise FileNotFoundError(
             f"Replay checkpoint not found: {ckpt_path}. "
-            "Train lfcc_vs_mel_compare (LFCC) or set REPLAY_CHECKPOINT."
+            "Train inverted_mel_mixed_2017_pa2019 or set REPLAY_CHECKPOINT."
         )
 
     map_device = torch.device(

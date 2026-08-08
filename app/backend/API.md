@@ -266,7 +266,7 @@ Upload a verification sample. File is saved under `uploads/verifications/user_<i
 > Requires a stored enrollment template (built after 3 enrollment uploads) and the Python ML server on `ML_SERVER_URL`.
 > With `REPLAY_DETECTION=true` (default), Express calls `/replay/detect` first.
 > `REPLAY` → blocked; `UNCERTAIN` → ask re-record (speaker verify skipped); `LIVE` → continue to speaker match.
-> Default model: mixed 2017+PA **LFCC** CNN with dual thresholds (`threshold_low` / `threshold_high`).
+> Default model: mixed 2017+PA **inverted-Mel** CNN with dual thresholds (`threshold_low` / `threshold_high`).
 
 **Headers**
 
@@ -295,13 +295,13 @@ Content-Type: multipart/form-data
   },
   "replay": {
     "score": 0.12,
-    "threshold": 0.74,
-    "threshold_low": 0.64,
-    "threshold_high": 0.84,
+    "threshold": 0.15,
+    "threshold_low": 0.05,
+    "threshold_high": 0.25,
     "is_replay": false,
     "accepted": true,
     "decision": "LIVE",
-    "feature_type": "lfcc"
+    "feature_type": "inverted_mel"
   },
   "result": {
     "score": 0.72,
@@ -330,16 +330,16 @@ Content-Type: multipart/form-data
   "message": "Verification rejected: replay attack detected",
   "replay": {
     "score": 0.91,
-    "threshold": 0.74,
-    "threshold_low": 0.64,
-    "threshold_high": 0.84,
+    "threshold": 0.15,
+    "threshold_low": 0.05,
+    "threshold_high": 0.25,
     "is_replay": true,
     "decision": "REPLAY",
-    "feature_type": "lfcc"
+    "feature_type": "inverted_mel"
   },
   "result": {
     "score": 0.91,
-    "threshold": 0.74,
+    "threshold": 0.15,
     "accepted": false,
     "decision": "REPLAY"
   }
@@ -353,17 +353,17 @@ Content-Type: multipart/form-data
   "success": true,
   "message": "Audio quality uncertain — please re-record and try again",
   "replay": {
-    "score": 0.72,
-    "threshold": 0.74,
-    "threshold_low": 0.64,
-    "threshold_high": 0.84,
+    "score": 0.12,
+    "threshold": 0.15,
+    "threshold_low": 0.05,
+    "threshold_high": 0.25,
     "is_replay": false,
     "decision": "UNCERTAIN",
-    "feature_type": "lfcc"
+    "feature_type": "inverted_mel"
   },
   "result": {
-    "score": 0.72,
-    "threshold": 0.74,
+    "score": 0.12,
+    "threshold": 0.15,
     "accepted": false,
     "decision": "UNCERTAIN"
   }

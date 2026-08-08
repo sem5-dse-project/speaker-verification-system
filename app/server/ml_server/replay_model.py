@@ -21,7 +21,7 @@ class AudioConfig:
     n_mels: int = 80
     n_lfcc: int = 60
     n_filters: int = 128
-    feature_type: str = "lfcc"
+    feature_type: str = "inverted_mel"
 
     @property
     def samples(self) -> int:

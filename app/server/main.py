@@ -98,7 +98,7 @@ async def replay_detect(
     threshold: Annotated[float | None, Form()] = None,
 ) -> ReplayDetectResponse:
     """
-    Score one clip with the LFCC (or configured) replay CNN.
+    Score one clip with the inverted-Mel (or configured) replay CNN.
 
     decision: LIVE | UNCERTAIN | REPLAY.
     Express should reject REPLAY, ask re-record on UNCERTAIN, then speaker-verify LIVE.
