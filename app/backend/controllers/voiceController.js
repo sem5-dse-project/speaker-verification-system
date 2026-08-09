@@ -144,7 +144,7 @@ const uploadVerification = async (req, res) => {
 
     if (mlClient.REPLAY_DETECTION) {
       replay = await mlClient.detectReplay(absolutePath)
-      if (replay.is_replay) {
+      if (replay.decision === 'REPLAY' || replay.is_replay) {
         const log = await verificationLogModel.createVerificationLog({
           userId: req.user.id,
           voiceSampleId: sample.id,
@@ -162,8 +162,37 @@ const uploadVerification = async (req, res) => {
           result: {
             score: replay.score,
             threshold: replay.threshold,
+            threshold_low: replay.threshold_low,
+            threshold_high: replay.threshold_high,
             accepted: false,
             decision: 'REPLAY',
+          },
+          log,
+        })
+      }
+
+      if (replay.decision === 'UNCERTAIN') {
+        const log = await verificationLogModel.createVerificationLog({
+          userId: req.user.id,
+          voiceSampleId: sample.id,
+          score: replay.score,
+          threshold: replay.threshold,
+          accepted: false,
+          decision: 'UNCERTAIN',
+        })
+
+        return res.status(201).json({
+          success: true,
+          message: 'Audio quality uncertain — please re-record and try again',
+          sample,
+          replay,
+          result: {
+            score: replay.score,
+            threshold: replay.threshold,
+            threshold_low: replay.threshold_low,
+            threshold_high: replay.threshold_high,
+            accepted: false,
+            decision: 'UNCERTAIN',
           },
           log,
         })

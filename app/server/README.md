@@ -15,11 +15,15 @@ Model: [`speechbrain/spkrec-ecapa-voxceleb`](https://huggingface.co/speechbrain/
 | `POST` | `/embed` | One embedding per uploaded file |
 | `POST` | `/enroll/template` | Average template from N enrollment files (use 3) |
 | `POST` | `/verify` | Probe audio + template JSON → score / ACCEPT|REJECT |
-| `POST` | `/replay/detect` | Inverted-Mel CNN → LIVE|REPLAY (gate before verify) |
+| `POST` | `/replay/detect` | Inverted-Mel CNN → LIVE\|UNCERTAIN\|REPLAY (gate before verify) |
 
-Default replay weights: mixed ASVspoof **2017 + PA2019** checkpoint  
+Default replay weights: mixed ASVspoof **2017 + PA2019** **inverted-Mel** checkpoint  
 (`replay-cnn-baseline/experiments/inverted_mel_mixed_2017_pa2019/.../best_inverted_mel_mixed_2017_pa2019.pt`).  
-Override with `REPLAY_CHECKPOINT` / `REPLAY_THRESHOLD` in `.env`.
+(LFCC is available via `REPLAY_CHECKPOINT` but tends to false-REPLAY on browser mics.)  
+Override with `REPLAY_CHECKPOINT` / `REPLAY_THRESHOLD` / `REPLAY_MARGIN` (or `REPLAY_T_LOW` + `REPLAY_T_HIGH`) in `.env`.
+
+Banding: `score < t_low` → LIVE, `t_low ≤ score < t_high` → UNCERTAIN (re-record), `score ≥ t_high` → REPLAY.  
+Default margin is `0.10` around the checkpoint EER threshold.
 
 Interactive docs: `http://localhost:8000/docs`
 

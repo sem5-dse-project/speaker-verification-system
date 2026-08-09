@@ -98,9 +98,10 @@ async def replay_detect(
     threshold: Annotated[float | None, Form()] = None,
 ) -> ReplayDetectResponse:
     """
-    Score one clip with the inverted-Mel replay CNN.
+    Score one clip with the inverted-Mel (or configured) replay CNN.
 
-    decision: LIVE | REPLAY. Express should reject REPLAY before speaker verify.
+    decision: LIVE | UNCERTAIN | REPLAY.
+    Express should reject REPLAY, ask re-record on UNCERTAIN, then speaker-verify LIVE.
     """
     if not REPLAY_ENABLED:
         raise HTTPException(status_code=503, detail="Replay detection is disabled")

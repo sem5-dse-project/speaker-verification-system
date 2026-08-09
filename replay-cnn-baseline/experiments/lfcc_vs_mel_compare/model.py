@@ -1,14 +1,14 @@
-"""ReplayCNN architecture for ML-server inference (no training deps)."""
+"""Lightweight replay CNN used for Mel / inverted-Mel / LFCC comparison."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 import numpy as np
 import torch
 import torch.nn as nn
 
-from ml_server.replay_features import build_spectrogram_front_end
+from features import build_spectrogram_front_end
 
 
 @dataclass
@@ -21,7 +21,7 @@ class AudioConfig:
     n_mels: int = 80
     n_lfcc: int = 60
     n_filters: int = 128
-    feature_type: str = "inverted_mel"
+    feature_type: str = "lfcc"
 
     @property
     def samples(self) -> int:
@@ -30,20 +30,21 @@ class AudioConfig:
 
 def fix_length(waveform: torch.Tensor, length: int, random_crop: bool) -> torch.Tensor:
     if waveform.numel() == 0:
-        raise ValueError("Empty audio file")
+        raise ValueError("Empty audio")
     if waveform.numel() < length:
         repeats = int(np.ceil(length / waveform.numel()))
         waveform = waveform.repeat(repeats)
     if waveform.numel() == length:
         return waveform
     max_start = waveform.numel() - length
-    start = int(torch.randint(0, max_start + 1, (1,)).item()) if random_crop else max_start // 2
+    if random_crop:
+        start = int(torch.randint(0, max_start + 1, (1,)).item())
+    else:
+        start = max_start // 2
     return waveform[start : start + length]
 
 
 class ReplayCNN(nn.Module):
-    """Same CNN as the feature-compare experiments; Mel / inverted-Mel / LFCC front-end."""
-
     def __init__(self, config: AudioConfig) -> None:
         super().__init__()
         self.config = config
@@ -85,3 +86,7 @@ class ReplayCNN(nn.Module):
         std = spec.std(dim=(-2, -1), keepdim=True).clamp_min(1e-5)
         spec = ((spec - mean) / std).unsqueeze(1)
         return self.classifier(self.features(spec)).squeeze(1)
+
+
+def config_to_dict(config: AudioConfig) -> dict:
+    return asdict(config)
