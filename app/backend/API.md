@@ -264,8 +264,11 @@ curl -X POST http://localhost:5000/api/voice/enroll ^
 Upload a verification sample. File is saved under `uploads/verifications/user_<id>/`.
 
 > Requires a stored enrollment template (built after 3 enrollment uploads) and the Python ML server on `ML_SERVER_URL`.
-> With `REPLAY_DETECTION=true` (default), Express calls `/replay/detect` first.
-> `NO_SPEECH` → ask re-record; `REPLAY` → blocked; `UNCERTAIN` → ask re-record; `LIVE` → speaker match.
+> With `REPLAY_DETECTION=true` (default), Express calls `/replay/detect` first
+> (inverted-Mel replay; optional LFCC-LA scores if `LA_ENABLED=true`).
+> `NO_SPEECH` → ask re-record; `REPLAY` → blocked; `SYNTHETIC` only if `LA_HARD_GATE=true`;
+> `UNCERTAIN` → ask re-record; `LIVE` → speaker match.
+> Note: LFCC-LA scores ~1.0 on browser-mic speech — keep `LA_HARD_GATE=false` for the UI.
 > Default model: mixed 2017+PA **inverted-Mel** CNN with dual thresholds (`threshold_low` / `threshold_high`).
 > Quiet clips are rejected via `MIN_SPEECH_RMS`; speaker cosine default threshold is `0.45`.
 
@@ -371,7 +374,7 @@ Content-Type: multipart/form-data
 }
 ```
 
-The `log` row is also stored in MySQL `verification_logs` (`decision` may be `ACCEPT`, `REJECT`, `REPLAY`, or `UNCERTAIN`).
+The `log` row is also stored in MySQL `verification_logs` (`decision` may be `ACCEPT`, `REJECT`, `REPLAY`, `SYNTHETIC`, `UNCERTAIN`, or `NO_SPEECH`).
 
 **Errors**
 

@@ -149,6 +149,51 @@ describe('voiceController', () => {
       )
     })
 
+    it('rejects synthetic spoof before speaker verify', async () => {
+      voiceModel.createVoiceSample.mockResolvedValue({
+        id: 10,
+        user_id: 1,
+        file_path: 'uploads/verifications/user_1/verify.wav',
+        sample_type: 'verification',
+      })
+      templateModel.getTemplateByUserId.mockResolvedValue({
+        user_id: 1,
+        embedding: [0.1, 0.2],
+        threshold: 0.45,
+      })
+      mlClient.detectReplay.mockResolvedValue({
+        score: 0.95,
+        threshold: 0.5,
+        threshold_low: 0.4,
+        threshold_high: 0.6,
+        is_replay: false,
+        is_synthetic: true,
+        accepted: false,
+        decision: 'SYNTHETIC',
+        la: { score: 0.95, decision: 'SYNTHETIC' },
+      })
+      verificationLogModel.createVerificationLog.mockResolvedValue({
+        id: 8,
+        decision: 'SYNTHETIC',
+      })
+
+      const req = { user: { id: 1 }, file: { path: pathJoinSafe() } }
+      const res = mockRes()
+
+      await uploadVerification(req, res)
+
+      expect(mlClient.verifyAgainstTemplate).not.toHaveBeenCalled()
+      expect(verificationLogModel.createVerificationLog).toHaveBeenCalledWith(
+        expect.objectContaining({ decision: 'SYNTHETIC', accepted: false }),
+      )
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('synthetic'),
+          result: expect.objectContaining({ decision: 'SYNTHETIC' }),
+        }),
+      )
+    })
+
     it('asks re-record on uncertain replay band', async () => {
       voiceModel.createVoiceSample.mockResolvedValue({
         id: 10,

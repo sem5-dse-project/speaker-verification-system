@@ -15,17 +15,20 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from ml_server.audio import has_sufficient_speech, load_audio_bytes
+from ml_server.anti_spoof import score_anti_spoof
 from ml_server.config import (
     DEFAULT_THRESHOLD,
     DEVICE,
     ECAPA_SOURCE,
     HOST,
+    LA_CHECKPOINT,
+    LA_ENABLED,
+    LA_HARD_GATE,
     PORT,
     REPLAY_CHECKPOINT,
     REPLAY_ENABLED,
 )
 from ml_server.ecapa import embed_audio_list, load_ecapa_encoder
-from ml_server.replay import score_replay
 from ml_server.schemas import (
     EmbedResponse,
     EnrollTemplateResponse,
@@ -85,8 +88,15 @@ def health() -> HealthResponse:
         if REPLAY_CHECKPOINT
         else ""
     )
+    la_note = (
+        f"; la={'on' if LA_ENABLED else 'off'}"
+        f"{'/hard' if LA_ENABLED and LA_HARD_GATE else '/soft' if LA_ENABLED else ''}"
+        f" ({LA_CHECKPOINT.name})"
+        if LA_CHECKPOINT
+        else ""
+    )
     return HealthResponse(
-        message=f"ECAPA ML server is running{replay_note}",
+        message=f"ECAPA ML server is running{replay_note}{la_note}",
         device=DEVICE,
         model=ECAPA_SOURCE,
     )
@@ -96,12 +106,14 @@ def health() -> HealthResponse:
 async def replay_detect(
     file: Annotated[UploadFile, File(description="Probe audio (WAV)")],
     threshold: Annotated[float | None, Form()] = None,
+    la_threshold: Annotated[float | None, Form()] = None,
 ) -> ReplayDetectResponse:
     """
-    Score one clip with the inverted-Mel (or configured) replay CNN.
+    Anti-spoof cascade: inverted-Mel replay, then optional LFCC-LA synthetic.
 
-    decision: LIVE | UNCERTAIN | REPLAY | NO_SPEECH.
-    Express should reject REPLAY, ask re-record on UNCERTAIN/NO_SPEECH, then speaker-verify LIVE.
+    decision: LIVE | UNCERTAIN | REPLAY | SYNTHETIC | NO_SPEECH.
+    Express rejects REPLAY/SYNTHETIC, asks re-record on UNCERTAIN/NO_SPEECH,
+    then speaker-verifies LIVE.
     """
     if not REPLAY_ENABLED:
         raise HTTPException(status_code=503, detail="Replay detection is disabled")
@@ -112,7 +124,12 @@ async def replay_detect(
 
     try:
         wave = load_audio_bytes(data)
-        result = score_replay(wave, threshold=threshold, device=DEVICE)
+        result = score_anti_spoof(
+            wave,
+            threshold=threshold,
+            la_threshold=la_threshold,
+            device=DEVICE,
+        )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -106,19 +106,36 @@ def test_verify_empty_file(client: TestClient):
 
 
 def test_replay_detect_live(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    def fake_score_replay(wave, threshold=None, device="cpu"):
+    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu"):
         return {
             "score": 0.1,
             "threshold": 0.74,
             "threshold_low": 0.64,
             "threshold_high": 0.84,
             "is_replay": False,
+            "is_synthetic": False,
             "accepted": True,
             "decision": "LIVE",
-            "feature_type": "lfcc",
+            "feature_type": "inverted_mel+lfcc",
+            "replay": {
+                "score": 0.1,
+                "threshold": 0.74,
+                "threshold_low": 0.64,
+                "threshold_high": 0.84,
+                "decision": "LIVE",
+                "feature_type": "inverted_mel",
+            },
+            "la": {
+                "score": 0.05,
+                "threshold": 0.5,
+                "threshold_low": 0.4,
+                "threshold_high": 0.6,
+                "decision": "LIVE",
+                "feature_type": "lfcc",
+            },
         }
 
-    monkeypatch.setattr(main, "score_replay", fake_score_replay)
+    monkeypatch.setattr(main, "score_anti_spoof", fake_score_anti_spoof)
     monkeypatch.setattr(main, "REPLAY_ENABLED", True)
     wav = make_wav_bytes()
     response = client.post(
@@ -129,22 +146,24 @@ def test_replay_detect_live(client: TestClient, monkeypatch: pytest.MonkeyPatch)
     body = response.json()
     assert body["decision"] == "LIVE"
     assert body["is_replay"] is False
+    assert body["la"]["decision"] == "LIVE"
 
 
 def test_replay_detect_uncertain(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    def fake_score_replay(wave, threshold=None, device="cpu"):
+    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu"):
         return {
             "score": 0.72,
             "threshold": 0.74,
             "threshold_low": 0.64,
             "threshold_high": 0.84,
             "is_replay": False,
+            "is_synthetic": False,
             "accepted": False,
             "decision": "UNCERTAIN",
-            "feature_type": "lfcc",
+            "feature_type": "inverted_mel+lfcc",
         }
 
-    monkeypatch.setattr(main, "score_replay", fake_score_replay)
+    monkeypatch.setattr(main, "score_anti_spoof", fake_score_anti_spoof)
     monkeypatch.setattr(main, "REPLAY_ENABLED", True)
     wav = make_wav_bytes()
     response = client.post(
@@ -159,20 +178,21 @@ def test_replay_detect_uncertain(client: TestClient, monkeypatch: pytest.MonkeyP
 
 
 def test_replay_detect_no_speech(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    def fake_score_replay(wave, threshold=None, device="cpu"):
+    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu"):
         return {
             "score": 0.0,
             "threshold": 0.15,
             "threshold_low": 0.05,
             "threshold_high": 0.25,
             "is_replay": False,
+            "is_synthetic": False,
             "accepted": False,
             "decision": "NO_SPEECH",
             "feature_type": "inverted_mel",
             "rms": 0.001,
         }
 
-    monkeypatch.setattr(main, "score_replay", fake_score_replay)
+    monkeypatch.setattr(main, "score_anti_spoof", fake_score_anti_spoof)
     monkeypatch.setattr(main, "REPLAY_ENABLED", True)
     wav = make_wav_bytes()
     response = client.post(
@@ -186,19 +206,20 @@ def test_replay_detect_no_speech(client: TestClient, monkeypatch: pytest.MonkeyP
 
 
 def test_replay_detect_replay(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    def fake_score_replay(wave, threshold=None, device="cpu"):
+    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu"):
         return {
             "score": 0.9,
             "threshold": 0.74,
             "threshold_low": 0.64,
             "threshold_high": 0.84,
             "is_replay": True,
+            "is_synthetic": False,
             "accepted": False,
             "decision": "REPLAY",
-            "feature_type": "lfcc",
+            "feature_type": "inverted_mel",
         }
 
-    monkeypatch.setattr(main, "score_replay", fake_score_replay)
+    monkeypatch.setattr(main, "score_anti_spoof", fake_score_anti_spoof)
     monkeypatch.setattr(main, "REPLAY_ENABLED", True)
     wav = make_wav_bytes()
     response = client.post(
@@ -207,3 +228,38 @@ def test_replay_detect_replay(client: TestClient, monkeypatch: pytest.MonkeyPatc
     )
     assert response.status_code == 200
     assert response.json()["decision"] == "REPLAY"
+
+
+def test_replay_detect_synthetic(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu"):
+        return {
+            "score": 0.95,
+            "threshold": 0.5,
+            "threshold_low": 0.4,
+            "threshold_high": 0.6,
+            "is_replay": False,
+            "is_synthetic": True,
+            "accepted": False,
+            "decision": "SYNTHETIC",
+            "feature_type": "inverted_mel+lfcc",
+            "la": {
+                "score": 0.95,
+                "threshold": 0.5,
+                "threshold_low": 0.4,
+                "threshold_high": 0.6,
+                "decision": "SYNTHETIC",
+                "feature_type": "lfcc",
+            },
+        }
+
+    monkeypatch.setattr(main, "score_anti_spoof", fake_score_anti_spoof)
+    monkeypatch.setattr(main, "REPLAY_ENABLED", True)
+    wav = make_wav_bytes()
+    response = client.post(
+        "/replay/detect",
+        files={"file": ("probe.wav", wav, "audio/wav")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["decision"] == "SYNTHETIC"
+    assert body["is_synthetic"] is True
