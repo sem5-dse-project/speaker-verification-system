@@ -34,6 +34,7 @@ class VerifyResponse(BaseModel):
     threshold: float
     accepted: bool
     decision: str
+    rms: float | None = None
 
 
 class ReplayDetectResponse(BaseModel):
@@ -46,3 +47,4 @@ class ReplayDetectResponse(BaseModel):
     accepted: bool
     decision: str
     feature_type: str | None = None
+    rms: float | None = None

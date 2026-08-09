@@ -6,6 +6,7 @@ from pathlib import Path
 
 import torch
 
+from ml_server.audio import has_sufficient_speech
 from ml_server.config import (
     DEVICE,
     REPLAY_CHECKPOINT,
@@ -103,7 +104,7 @@ def score_replay(
     threshold: float | None = None,
     device: str = DEVICE,
 ) -> dict:
-    """Score mono waveform for replay. Returns LIVE|UNCERTAIN|REPLAY."""
+    """Score mono waveform for replay. Returns LIVE|UNCERTAIN|REPLAY|NO_SPEECH."""
     model, ckpt_thr, config = get_replay_detector(device=device)
     center = ckpt_thr if threshold is None else float(threshold)
     center, t_low, t_high = resolve_band_thresholds(center)
@@ -112,6 +113,21 @@ def score_replay(
     wave = waveform.detach().float().cpu()
     if wave.ndim > 1:
         wave = wave.mean(dim=0)
+
+    ok_speech, rms = has_sufficient_speech(wave)
+    if not ok_speech:
+        return {
+            "score": 0.0,
+            "threshold": center,
+            "threshold_low": t_low,
+            "threshold_high": t_high,
+            "is_replay": False,
+            "accepted": False,
+            "decision": "NO_SPEECH",
+            "feature_type": config.feature_type,
+            "rms": rms,
+        }
+
     wave = fix_length(wave, config.samples, random_crop=False)
     batch = wave.unsqueeze(0).to(map_device)
 
@@ -128,4 +144,5 @@ def score_replay(
         "accepted": decision == "LIVE",
         "decision": decision,
         "feature_type": config.feature_type,
+        "rms": rms,
     }

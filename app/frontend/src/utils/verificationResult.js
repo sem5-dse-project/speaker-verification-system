@@ -30,6 +30,13 @@ export function formatVerificationResult(result, fallbackMessage = 'Verification
     }
   }
 
+  if (decision === 'NO_SPEECH') {
+    return {
+      type: 'warning',
+      text: `No speech detected — please speak clearly and try again${scoreText}`,
+    }
+  }
+
   return {
     type: decision === 'REJECT' ? 'error' : 'success',
     text: `Verification ${decision}${scoreText}`,

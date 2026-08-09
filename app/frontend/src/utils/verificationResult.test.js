@@ -45,6 +45,15 @@ describe('formatVerificationResult', () => {
     })
   })
 
+  it('formats NO_SPEECH as warning', () => {
+    expect(
+      formatVerificationResult({ decision: 'NO_SPEECH', score: 0, accepted: false }),
+    ).toEqual({
+      type: 'warning',
+      text: 'No speech detected — please speak clearly and try again (score 0.000)',
+    })
+  })
+
   it('falls back when result is empty', () => {
     expect(formatVerificationResult(null, 'Done')).toEqual({
       type: 'success',

@@ -265,8 +265,9 @@ Upload a verification sample. File is saved under `uploads/verifications/user_<i
 
 > Requires a stored enrollment template (built after 3 enrollment uploads) and the Python ML server on `ML_SERVER_URL`.
 > With `REPLAY_DETECTION=true` (default), Express calls `/replay/detect` first.
-> `REPLAY` → blocked; `UNCERTAIN` → ask re-record (speaker verify skipped); `LIVE` → continue to speaker match.
+> `NO_SPEECH` → ask re-record; `REPLAY` → blocked; `UNCERTAIN` → ask re-record; `LIVE` → speaker match.
 > Default model: mixed 2017+PA **inverted-Mel** CNN with dual thresholds (`threshold_low` / `threshold_high`).
+> Quiet clips are rejected via `MIN_SPEECH_RMS`; speaker cosine default threshold is `0.45`.
 
 **Headers**
 
