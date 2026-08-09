@@ -144,6 +144,34 @@ const uploadVerification = async (req, res) => {
 
     if (mlClient.REPLAY_DETECTION) {
       replay = await mlClient.detectReplay(absolutePath)
+      if (replay.decision === 'NO_SPEECH') {
+        const log = await verificationLogModel.createVerificationLog({
+          userId: req.user.id,
+          voiceSampleId: sample.id,
+          score: replay.score,
+          threshold: replay.threshold,
+          accepted: false,
+          decision: 'NO_SPEECH',
+        })
+
+        return res.status(201).json({
+          success: true,
+          message: 'No speech detected — please speak clearly and try again',
+          sample,
+          replay,
+          result: {
+            score: replay.score,
+            threshold: replay.threshold,
+            threshold_low: replay.threshold_low,
+            threshold_high: replay.threshold_high,
+            accepted: false,
+            decision: 'NO_SPEECH',
+            rms: replay.rms,
+          },
+          log,
+        })
+      }
+
       if (replay.decision === 'REPLAY' || replay.is_replay) {
         const log = await verificationLogModel.createVerificationLog({
           userId: req.user.id,
@@ -202,7 +230,7 @@ const uploadVerification = async (req, res) => {
     const mlResult = await mlClient.verifyAgainstTemplate(
       absolutePath,
       template.embedding,
-      template.threshold,
+      null, // use ML server DEFAULT_THRESHOLD (env); avoid stale per-user thr
     )
 
     const log = await verificationLogModel.createVerificationLog({
