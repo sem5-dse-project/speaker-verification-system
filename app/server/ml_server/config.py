@@ -12,7 +12,17 @@ load_dotenv(_ROOT / ".env")
 
 SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", "16000"))
 MAX_SECONDS = float(os.getenv("MAX_SECONDS", "4.0"))
-DEFAULT_THRESHOLD = float(os.getenv("DEFAULT_THRESHOLD", "0.25"))
+# Cosine ACCEPT threshold (raised so silence/noise rarely clears speaker verify)
+DEFAULT_THRESHOLD = float(os.getenv("DEFAULT_THRESHOLD", "0.45"))
+# Frame-level speech gate — require sustained louder frames (rejects ambient mic)
+# Defaults tuned on laptop verify WAVs that false-ACCEPTed without speech.
+MIN_SPEECH_FRAME_RMS = float(os.getenv("MIN_SPEECH_FRAME_RMS", "0.08"))
+MIN_SPEECH_MS = float(os.getenv("MIN_SPEECH_MS", "350"))
+MIN_SPEECH_STRONG_FRAME_RMS = float(os.getenv("MIN_SPEECH_STRONG_FRAME_RMS", "0.10"))
+MIN_SPEECH_STRONG_MS = float(os.getenv("MIN_SPEECH_STRONG_MS", "200"))
+MIN_SPEECH_PEAK = float(os.getenv("MIN_SPEECH_PEAK", "0.40"))
+# Legacy whole-clip floor (very quiet clips fail fast)
+MIN_SPEECH_RMS = float(os.getenv("MIN_SPEECH_RMS", "0.01"))
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8000"))
 DEVICE = os.getenv("DEVICE", "cpu")  # cpu | cuda

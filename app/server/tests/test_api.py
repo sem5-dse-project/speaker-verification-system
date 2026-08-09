@@ -158,6 +158,33 @@ def test_replay_detect_uncertain(client: TestClient, monkeypatch: pytest.MonkeyP
     assert body["is_replay"] is False
 
 
+def test_replay_detect_no_speech(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    def fake_score_replay(wave, threshold=None, device="cpu"):
+        return {
+            "score": 0.0,
+            "threshold": 0.15,
+            "threshold_low": 0.05,
+            "threshold_high": 0.25,
+            "is_replay": False,
+            "accepted": False,
+            "decision": "NO_SPEECH",
+            "feature_type": "inverted_mel",
+            "rms": 0.001,
+        }
+
+    monkeypatch.setattr(main, "score_replay", fake_score_replay)
+    monkeypatch.setattr(main, "REPLAY_ENABLED", True)
+    wav = make_wav_bytes()
+    response = client.post(
+        "/replay/detect",
+        files={"file": ("probe.wav", wav, "audio/wav")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["decision"] == "NO_SPEECH"
+    assert body["accepted"] is False
+
+
 def test_replay_detect_replay(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     def fake_score_replay(wave, threshold=None, device="cpu"):
         return {

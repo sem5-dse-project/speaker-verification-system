@@ -14,7 +14,7 @@ import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from ml_server.audio import load_audio_bytes
+from ml_server.audio import has_sufficient_speech, load_audio_bytes
 from ml_server.config import (
     DEFAULT_THRESHOLD,
     DEVICE,
@@ -100,8 +100,8 @@ async def replay_detect(
     """
     Score one clip with the inverted-Mel (or configured) replay CNN.
 
-    decision: LIVE | UNCERTAIN | REPLAY.
-    Express should reject REPLAY, ask re-record on UNCERTAIN, then speaker-verify LIVE.
+    decision: LIVE | UNCERTAIN | REPLAY | NO_SPEECH.
+    Express should reject REPLAY, ask re-record on UNCERTAIN/NO_SPEECH, then speaker-verify LIVE.
     """
     if not REPLAY_ENABLED:
         raise HTTPException(status_code=503, detail="Replay detection is disabled")
@@ -195,10 +195,21 @@ async def verify(
         if template.ndim != 1 or template.size == 0:
             raise ValueError("embedding must be a 1-D JSON array of floats")
         wave = load_audio_bytes(data)
+        ok_speech, rms = has_sufficient_speech(wave)
+        if not ok_speech:
+            thr = float(threshold) if threshold is not None else DEFAULT_THRESHOLD
+            return VerifyResponse(
+                score=0.0,
+                threshold=thr,
+                accepted=False,
+                decision="NO_SPEECH",
+                rms=rms,
+            )
         encoder = get_encoder()
         probe = embed_audio_list(encoder, [wave], device=DEVICE)[0]
         score = cosine_similarity(template, probe)
         result = decide(score, threshold)
+        result["rms"] = rms
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
