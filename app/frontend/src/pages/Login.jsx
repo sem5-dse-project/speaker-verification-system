@@ -3,6 +3,7 @@ import { AtSign, LockKeyhole, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthCard from '../components/AuthCard.jsx'
 import InputField from '../components/InputField.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import api from '../services/api.js'
 
 const INITIAL_FORM = {
@@ -13,6 +14,7 @@ const INITIAL_FORM = {
 
 function Login() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [form, setForm] = useState(INITIAL_FORM)
   const [showPassword, setShowPassword] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -60,8 +62,7 @@ function Login() {
         password: form.password,
       })
 
-      localStorage.setItem('token', response.data.token)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
+      login(response.data.token, response.data.user, form.rememberMe)
 
       navigate('/dashboard', { replace: true })
     } catch (error) {

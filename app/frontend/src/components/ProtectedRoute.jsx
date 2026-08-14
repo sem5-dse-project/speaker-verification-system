@@ -1,36 +1,38 @@
 import { Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useAuth } from '../context/AuthContext.jsx'
+import { isTokenValid } from '../utils/jwt.js'
 
-const hasValidToken = () => {
-  const token = localStorage.getItem('token')
+const hasValidToken = (tokenFromArg) => {
+  const token =
+    tokenFromArg || localStorage.getItem('token') || sessionStorage.getItem('token')
+
   if (!token) {
     return false
   }
 
-  try {
-    const payloadBase64 = token.split('.')[1]
-    const payloadJson = atob(payloadBase64)
-    const payload = JSON.parse(payloadJson)
-
-    if (!payload.exp) {
-      return true
-    }
-
-    const isValid = payload.exp * 1000 > Date.now()
-    if (!isValid) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-    }
-
-    return isValid
-  } catch {
+  const valid = isTokenValid(token)
+  if (!valid) {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    return false
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
   }
+
+  return valid
 }
 
 function ProtectedRoute({ children }) {
-  if (!hasValidToken()) {
+  const { token, logout } = useAuth()
+  const valid = hasValidToken(token)
+
+  useEffect(() => {
+    if (token && !valid) {
+      logout()
+    }
+  }, [token, valid, logout])
+
+  if (!valid) {
     return <Navigate to="/login" replace />
   }
 

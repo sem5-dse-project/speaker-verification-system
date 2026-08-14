@@ -162,7 +162,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
       const chunks = pcmChunksRef.current
       const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
 
-      if (totalLength < sampleRateRef.current * 0.3) {
+      if (totalLength < sampleRateRef.current * 0.5) {
         cleanupAudioGraph()
         setStatus('ready')
         onRecorderError('Recording too short. Please speak for at least half a second.')
