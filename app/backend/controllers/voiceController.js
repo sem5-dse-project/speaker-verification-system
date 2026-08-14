@@ -34,6 +34,24 @@ const signUserToken = (user) =>
     { expiresIn: '1d' },
   )
 
+const runReplayDetection = async (absolutePath) => {
+  if (!mlClient.REPLAY_DETECTION) {
+    return null
+  }
+
+  try {
+    return await mlClient.detectReplay(absolutePath)
+  } catch (error) {
+    const message = error.message || ''
+    if (message.includes('Replay checkpoint not found')) {
+      const unavailable = new Error('Replay detection is unavailable on this server')
+      unavailable.statusCode = 503
+      throw unavailable
+    }
+    throw error
+  }
+}
+
 const identifyVoice = async (req, res) => {
   let absolutePath = null
   try {
@@ -47,16 +65,13 @@ const identifyVoice = async (req, res) => {
     const relativePath = toRelativePath(req.file.path)
   absolutePath = toAbsolutePath(relativePath)
 
-    let replay = null
-    if (mlClient.REPLAY_DETECTION) {
-      replay = await mlClient.detectReplay(absolutePath)
-      if (replay.is_replay) {
-        return res.status(403).json({
-          success: false,
-          message: 'Voice login rejected: replay attack detected',
-          replay,
-        })
-      }
+    const replay = await runReplayDetection(absolutePath)
+    if (replay?.is_replay) {
+      return res.status(403).json({
+        success: false,
+        message: 'Voice login rejected: replay attack detected',
+        replay,
+      })
     }
 
     const { embedding, embedding_dim } = await mlClient.extractEmbedding(absolutePath)
@@ -99,6 +114,13 @@ const identifyVoice = async (req, res) => {
       similarity_score: bestMatch.score,
     })
   } catch (error) {
+    if (error.statusCode === 503) {
+      return res.status(503).json({
+        success: false,
+        message: error.message,
+      })
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Failed to identify voice',
@@ -339,34 +361,30 @@ const uploadVerification = async (req, res) => {
     }
 
     const absolutePath = toAbsolutePath(relativePath)
-    let replay = null
+    const replay = await runReplayDetection(absolutePath)
+    if (replay?.is_replay) {
+      const log = await verificationLogModel.createVerificationLog({
+        userId: req.user.id,
+        voiceSampleId: sample.id,
+        score: replay.score,
+        threshold: replay.threshold,
+        accepted: false,
+        decision: 'REPLAY',
+      })
 
-    if (mlClient.REPLAY_DETECTION) {
-      replay = await mlClient.detectReplay(absolutePath)
-      if (replay.is_replay) {
-        const log = await verificationLogModel.createVerificationLog({
-          userId: req.user.id,
-          voiceSampleId: sample.id,
+      return res.status(201).json({
+        success: true,
+        message: 'Verification rejected: replay attack detected',
+        sample,
+        replay,
+        result: {
           score: replay.score,
           threshold: replay.threshold,
           accepted: false,
           decision: 'REPLAY',
-        })
-
-        return res.status(201).json({
-          success: true,
-          message: 'Verification rejected: replay attack detected',
-          sample,
-          replay,
-          result: {
-            score: replay.score,
-            threshold: replay.threshold,
-            accepted: false,
-            decision: 'REPLAY',
-          },
-          log,
-        })
-      }
+        },
+        log,
+      })
     }
 
     const mlResult = await mlClient.verifyAgainstTemplate(
@@ -398,6 +416,13 @@ const uploadVerification = async (req, res) => {
       log,
     })
   } catch (error) {
+    if (error.statusCode === 503) {
+      return res.status(503).json({
+        success: false,
+        message: error.message,
+      })
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Failed to verify audio',

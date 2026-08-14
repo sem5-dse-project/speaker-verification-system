@@ -26,7 +26,8 @@ const buildUploader = (sampleType) => {
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
       const baseDir = sampleType === 'enrollment' ? 'enrollments' : 'verifications'
-      const userDir = path.join(__dirname, '..', 'uploads', baseDir, `user_${req.user.id}`)
+      const userId = req.user?.id ?? 'anonymous'
+      const userDir = path.join(__dirname, '..', 'uploads', baseDir, `user_${userId}`)
       fs.mkdirSync(userDir, { recursive: true })
       cb(null, userDir)
     },
