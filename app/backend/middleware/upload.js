@@ -32,7 +32,7 @@ const buildUploader = (sampleType) => {
     },
     filename: (req, file, cb) => {
       const prefix = sampleType === 'enrollment' ? 'enroll' : 'verify'
-      const userId = req.user?.id ?? 'unknown'
+      const userId = req.user?.id ?? 'anonymous'
       const sampleIdx = sampleIndexFromName(file.originalname)
       const samplePart = sampleIdx ? `s${sampleIdx}` : 's'
       // Example: enroll_u1_s2_20260730_083915142_a3f2c1.wav
