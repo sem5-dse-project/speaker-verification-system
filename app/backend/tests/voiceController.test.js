@@ -168,7 +168,9 @@ describe('voiceController', () => {
       })
       mlClient.detectReplay.mockResolvedValue({
         score: 0.91,
-        threshold: 0.76,
+        threshold: 0.74,
+        threshold_low: 0.64,
+        threshold_high: 0.84,
         is_replay: true,
         accepted: false,
         decision: 'REPLAY',
@@ -190,6 +192,138 @@ describe('voiceController', () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           result: expect.objectContaining({ decision: 'REPLAY' }),
+        }),
+      )
+    })
+
+    it('asks re-record on no speech', async () => {
+      voiceModel.createVoiceSample.mockResolvedValue({
+        id: 10,
+        user_id: 1,
+        file_path: 'uploads/verifications/user_1/verify.wav',
+        sample_type: 'verification',
+      })
+      templateModel.getTemplateByUserId.mockResolvedValue({
+        user_id: 1,
+        embedding: [0.1, 0.2],
+        threshold: 0.45,
+      })
+      mlClient.detectReplay.mockResolvedValue({
+        score: 0,
+        threshold: 0.15,
+        threshold_low: 0.05,
+        threshold_high: 0.25,
+        is_replay: false,
+        accepted: false,
+        decision: 'NO_SPEECH',
+        rms: 0.001,
+      })
+      verificationLogModel.createVerificationLog.mockResolvedValue({
+        id: 7,
+        decision: 'NO_SPEECH',
+      })
+
+      const req = { user: { id: 1 }, file: { path: pathJoinSafe() } }
+      const res = mockRes()
+
+      await uploadVerification(req, res)
+
+      expect(mlClient.verifyAgainstTemplate).not.toHaveBeenCalled()
+      expect(verificationLogModel.createVerificationLog).toHaveBeenCalledWith(
+        expect.objectContaining({ decision: 'NO_SPEECH', accepted: false }),
+      )
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('No speech'),
+          result: expect.objectContaining({ decision: 'NO_SPEECH' }),
+        }),
+      )
+    })
+
+    it('rejects synthetic spoof before speaker verify', async () => {
+      voiceModel.createVoiceSample.mockResolvedValue({
+        id: 10,
+        user_id: 1,
+        file_path: 'uploads/verifications/user_1/verify.wav',
+        sample_type: 'verification',
+      })
+      templateModel.getTemplateByUserId.mockResolvedValue({
+        user_id: 1,
+        embedding: [0.1, 0.2],
+        threshold: 0.45,
+      })
+      mlClient.detectReplay.mockResolvedValue({
+        score: 0.95,
+        threshold: 0.5,
+        threshold_low: 0.4,
+        threshold_high: 0.6,
+        is_replay: false,
+        is_synthetic: true,
+        accepted: false,
+        decision: 'SYNTHETIC',
+        la: { score: 0.95, decision: 'SYNTHETIC' },
+      })
+      verificationLogModel.createVerificationLog.mockResolvedValue({
+        id: 8,
+        decision: 'SYNTHETIC',
+      })
+
+      const req = { user: { id: 1 }, file: { path: pathJoinSafe() } }
+      const res = mockRes()
+
+      await uploadVerification(req, res)
+
+      expect(mlClient.verifyAgainstTemplate).not.toHaveBeenCalled()
+      expect(verificationLogModel.createVerificationLog).toHaveBeenCalledWith(
+        expect.objectContaining({ decision: 'SYNTHETIC', accepted: false }),
+      )
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('synthetic'),
+          result: expect.objectContaining({ decision: 'SYNTHETIC' }),
+        }),
+      )
+    })
+
+    it('asks re-record on uncertain replay band', async () => {
+      voiceModel.createVoiceSample.mockResolvedValue({
+        id: 10,
+        user_id: 1,
+        file_path: 'uploads/verifications/user_1/verify.wav',
+        sample_type: 'verification',
+      })
+      templateModel.getTemplateByUserId.mockResolvedValue({
+        user_id: 1,
+        embedding: [0.1, 0.2],
+        threshold: 0.25,
+      })
+      mlClient.detectReplay.mockResolvedValue({
+        score: 0.72,
+        threshold: 0.74,
+        threshold_low: 0.64,
+        threshold_high: 0.84,
+        is_replay: false,
+        accepted: false,
+        decision: 'UNCERTAIN',
+      })
+      verificationLogModel.createVerificationLog.mockResolvedValue({
+        id: 6,
+        decision: 'UNCERTAIN',
+      })
+
+      const req = { user: { id: 1 }, file: { path: pathJoinSafe() } }
+      const res = mockRes()
+
+      await uploadVerification(req, res)
+
+      expect(mlClient.verifyAgainstTemplate).not.toHaveBeenCalled()
+      expect(verificationLogModel.createVerificationLog).toHaveBeenCalledWith(
+        expect.objectContaining({ decision: 'UNCERTAIN', accepted: false }),
+      )
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('re-record'),
+          result: expect.objectContaining({ decision: 'UNCERTAIN' }),
         }),
       )
     })

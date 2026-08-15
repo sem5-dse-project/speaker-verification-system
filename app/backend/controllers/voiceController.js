@@ -63,7 +63,7 @@ const identifyVoice = async (req, res) => {
     }
 
     const relativePath = toRelativePath(req.file.path)
-  absolutePath = toAbsolutePath(relativePath)
+    absolutePath = toAbsolutePath(relativePath)
 
     const replay = await runReplayDetection(absolutePath)
     if (replay?.is_replay) {
@@ -362,35 +362,132 @@ const uploadVerification = async (req, res) => {
 
     const absolutePath = toAbsolutePath(relativePath)
     const replay = await runReplayDetection(absolutePath)
-    if (replay?.is_replay) {
-      const log = await verificationLogModel.createVerificationLog({
-        userId: req.user.id,
-        voiceSampleId: sample.id,
-        score: replay.score,
-        threshold: replay.threshold,
-        accepted: false,
-        decision: 'REPLAY',
-      })
 
-      return res.status(201).json({
-        success: true,
-        message: 'Verification rejected: replay attack detected',
-        sample,
-        replay,
-        result: {
+    if (replay) {
+      if (replay.decision === 'NO_SPEECH') {
+        const log = await verificationLogModel.createVerificationLog({
+          userId: req.user.id,
+          voiceSampleId: sample.id,
+          score: replay.score,
+          threshold: replay.threshold,
+          accepted: false,
+          decision: 'NO_SPEECH',
+        })
+
+        return res.status(201).json({
+          success: true,
+          message: 'No speech detected - please speak clearly and try again',
+          sample,
+          replay,
+          result: {
+            score: replay.score,
+            threshold: replay.threshold,
+            threshold_low: replay.threshold_low,
+            threshold_high: replay.threshold_high,
+            accepted: false,
+            decision: 'NO_SPEECH',
+            rms: replay.rms,
+            replay: replay.replay,
+            la: replay.la,
+          },
+          log,
+        })
+      }
+
+      if (replay.decision === 'REPLAY' || replay.is_replay) {
+        const log = await verificationLogModel.createVerificationLog({
+          userId: req.user.id,
+          voiceSampleId: sample.id,
           score: replay.score,
           threshold: replay.threshold,
           accepted: false,
           decision: 'REPLAY',
-        },
-        log,
-      })
+        })
+
+        return res.status(201).json({
+          success: true,
+          message: 'Verification rejected: replay attack detected',
+          sample,
+          replay,
+          result: {
+            score: replay.score,
+            threshold: replay.threshold,
+            threshold_low: replay.threshold_low,
+            threshold_high: replay.threshold_high,
+            accepted: false,
+            decision: 'REPLAY',
+            is_synthetic: false,
+            replay: replay.replay,
+            la: replay.la,
+          },
+          log,
+        })
+      }
+
+      if (replay.decision === 'SYNTHETIC' || replay.is_synthetic) {
+        const log = await verificationLogModel.createVerificationLog({
+          userId: req.user.id,
+          voiceSampleId: sample.id,
+          score: replay.score,
+          threshold: replay.threshold,
+          accepted: false,
+          decision: 'SYNTHETIC',
+        })
+
+        return res.status(201).json({
+          success: true,
+          message: 'Verification rejected: synthetic spoof detected',
+          sample,
+          replay,
+          result: {
+            score: replay.score,
+            threshold: replay.threshold,
+            threshold_low: replay.threshold_low,
+            threshold_high: replay.threshold_high,
+            accepted: false,
+            decision: 'SYNTHETIC',
+            is_synthetic: true,
+            replay: replay.replay,
+            la: replay.la,
+          },
+          log,
+        })
+      }
+
+      if (replay.decision === 'UNCERTAIN') {
+        const log = await verificationLogModel.createVerificationLog({
+          userId: req.user.id,
+          voiceSampleId: sample.id,
+          score: replay.score,
+          threshold: replay.threshold,
+          accepted: false,
+          decision: 'UNCERTAIN',
+        })
+
+        return res.status(201).json({
+          success: true,
+          message: 'Audio quality uncertain - please re-record and try again',
+          sample,
+          replay,
+          result: {
+            score: replay.score,
+            threshold: replay.threshold,
+            threshold_low: replay.threshold_low,
+            threshold_high: replay.threshold_high,
+            accepted: false,
+            decision: 'UNCERTAIN',
+            replay: replay.replay,
+            la: replay.la,
+          },
+          log,
+        })
+      }
     }
 
     const mlResult = await mlClient.verifyAgainstTemplate(
       absolutePath,
       template.embedding,
-      template.threshold,
+      null, // use ML server DEFAULT_THRESHOLD (env); avoid stale per-user thr
     )
 
     const log = await verificationLogModel.createVerificationLog({
@@ -412,6 +509,8 @@ const uploadVerification = async (req, res) => {
         threshold: mlResult.threshold,
         accepted: mlResult.accepted,
         decision: mlResult.decision,
+        replay: replay?.replay,
+        la: replay?.la,
       },
       log,
     })

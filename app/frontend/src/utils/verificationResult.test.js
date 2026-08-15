@@ -36,6 +36,39 @@ describe('formatVerificationResult', () => {
     })
   })
 
+  it('formats UNCERTAIN as warning', () => {
+    expect(
+      formatVerificationResult({ decision: 'UNCERTAIN', score: 0.72, accepted: false }),
+    ).toEqual({
+      type: 'warning',
+      text: 'Could not confidently check for spoof — please re-record (score 0.720)',
+    })
+  })
+
+  it('formats SYNTHETIC as error with stage scores', () => {
+    expect(
+      formatVerificationResult({
+        decision: 'SYNTHETIC',
+        score: 0.95,
+        accepted: false,
+        replay: { score: 0.12 },
+        la: { score: 0.95 },
+      }),
+    ).toEqual({
+      type: 'error',
+      text: 'Synthetic spoof detected (score 0.950) [replay 0.120 · LA 0.950]',
+    })
+  })
+
+  it('formats NO_SPEECH as warning', () => {
+    expect(
+      formatVerificationResult({ decision: 'NO_SPEECH', score: 0, accepted: false }),
+    ).toEqual({
+      type: 'warning',
+      text: 'No speech detected — please speak clearly and try again (score 0.000)',
+    })
+  })
+
   it('falls back when result is empty', () => {
     expect(formatVerificationResult(null, 'Done')).toEqual({
       type: 'success',

@@ -264,7 +264,13 @@ curl -X POST http://localhost:5000/api/voice/enroll ^
 Upload a verification sample. File is saved under `uploads/verifications/user_<id>/`.
 
 > Requires a stored enrollment template (built after 3 enrollment uploads) and the Python ML server on `ML_SERVER_URL`.
-> With `REPLAY_DETECTION=true` (default), Express calls `/replay/detect` first. Replay → `decision: "REPLAY"` (speaker verify skipped).
+> With `REPLAY_DETECTION=true` (default), Express calls `/replay/detect` first
+> (inverted-Mel replay; optional LFCC-LA scores if `LA_ENABLED=true`).
+> `NO_SPEECH` → ask re-record; `REPLAY` → blocked; `SYNTHETIC` only if `LA_HARD_GATE=true`;
+> `UNCERTAIN` → ask re-record; `LIVE` → speaker match.
+> Note: LFCC-LA scores ~1.0 on browser-mic speech — keep `LA_HARD_GATE=false` for the UI.
+> Default model: mixed 2017+PA **inverted-Mel** CNN with dual thresholds (`threshold_low` / `threshold_high`).
+> Quiet clips are rejected via `MIN_SPEECH_RMS`; speaker cosine default threshold is `0.45`.
 
 **Headers**
 
@@ -293,10 +299,13 @@ Content-Type: multipart/form-data
   },
   "replay": {
     "score": 0.12,
-    "threshold": 0.765,
+    "threshold": 0.15,
+    "threshold_low": 0.05,
+    "threshold_high": 0.25,
     "is_replay": false,
     "accepted": true,
-    "decision": "LIVE"
+    "decision": "LIVE",
+    "feature_type": "inverted_mel"
   },
   "result": {
     "score": 0.72,
@@ -325,20 +334,47 @@ Content-Type: multipart/form-data
   "message": "Verification rejected: replay attack detected",
   "replay": {
     "score": 0.91,
-    "threshold": 0.765,
+    "threshold": 0.15,
+    "threshold_low": 0.05,
+    "threshold_high": 0.25,
     "is_replay": true,
-    "decision": "REPLAY"
+    "decision": "REPLAY",
+    "feature_type": "inverted_mel"
   },
   "result": {
     "score": 0.91,
-    "threshold": 0.765,
+    "threshold": 0.15,
     "accepted": false,
     "decision": "REPLAY"
   }
 }
 ```
 
-The `log` row is also stored in MySQL `verification_logs` (`decision` may be `ACCEPT`, `REJECT`, or `REPLAY`).
+**Response `201`** (uncertain — re-record)
+
+```json
+{
+  "success": true,
+  "message": "Audio quality uncertain — please re-record and try again",
+  "replay": {
+    "score": 0.12,
+    "threshold": 0.15,
+    "threshold_low": 0.05,
+    "threshold_high": 0.25,
+    "is_replay": false,
+    "decision": "UNCERTAIN",
+    "feature_type": "inverted_mel"
+  },
+  "result": {
+    "score": 0.12,
+    "threshold": 0.15,
+    "accepted": false,
+    "decision": "UNCERTAIN"
+  }
+}
+```
+
+The `log` row is also stored in MySQL `verification_logs` (`decision` may be `ACCEPT`, `REJECT`, `REPLAY`, `SYNTHETIC`, `UNCERTAIN`, or `NO_SPEECH`).
 
 **Errors**
 
