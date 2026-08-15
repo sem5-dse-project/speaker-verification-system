@@ -51,6 +51,31 @@ const getTemplateByUserId = async (userId) => {
   }
 }
 
+const getAllTemplatesWithUsers = async () => {
+  const [rows] = await pool.query(
+    `
+      SELECT et.user_id, et.embedding, et.embedding_dim, et.threshold, u.username
+      FROM enrollment_templates et
+      INNER JOIN users u ON u.id = et.user_id
+    `,
+  )
+
+  return rows.map((row) => {
+    let embedding = row.embedding
+    if (typeof embedding === 'string') {
+      embedding = JSON.parse(embedding)
+    }
+
+    return {
+      user_id: row.user_id,
+      username: row.username,
+      embedding,
+      embedding_dim: row.embedding_dim,
+      threshold: row.threshold,
+    }
+  })
+}
+
 const deleteTemplateByUserId = async (userId) => {
   const [result] = await pool.query(
     'DELETE FROM enrollment_templates WHERE user_id = ?',
@@ -62,5 +87,6 @@ const deleteTemplateByUserId = async (userId) => {
 module.exports = {
   upsertTemplate,
   getTemplateByUserId,
+  getAllTemplatesWithUsers,
   deleteTemplateByUserId,
 }

@@ -58,6 +58,36 @@ const buildEnrollmentTemplate = async (absoluteFilePaths) => {
   return data
 }
 
+const extractEmbedding = async (absoluteFilePath) => {
+  if (!isPcmWavFile(absoluteFilePath)) {
+    throw new Error('Audio file is not a valid WAV. Re-record and try again.')
+  }
+
+  const form = new FormData()
+  form.append('files', filePart(absoluteFilePath), path.basename(absoluteFilePath))
+
+  const response = await fetch(`${ML_SERVER_URL}/embed`, {
+    method: 'POST',
+    body: form,
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const detail = data.detail || data.message || response.statusText
+    throw new Error(`ML embed failed: ${detail}`)
+  }
+
+  const embedding = data.embeddings?.[0]
+  if (!Array.isArray(embedding) || embedding.length === 0) {
+    throw new Error('ML embed failed: missing embedding in response')
+  }
+
+  return {
+    embedding,
+    embedding_dim: Number(data.embedding_dim || embedding.length),
+  }
+}
+
 const verifyAgainstTemplate = async (absoluteFilePath, embedding, threshold = null) => {
   if (!isPcmWavFile(absoluteFilePath)) {
     throw new Error(
@@ -119,6 +149,7 @@ module.exports = {
   ML_SERVER_URL,
   REPLAY_DETECTION,
   isPcmWavFile,
+  extractEmbedding,
   buildEnrollmentTemplate,
   verifyAgainstTemplate,
   detectReplay,
