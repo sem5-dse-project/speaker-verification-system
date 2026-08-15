@@ -61,3 +61,29 @@ _raw_t_low = os.getenv("REPLAY_T_LOW", "").strip()
 _raw_t_high = os.getenv("REPLAY_T_HIGH", "").strip()
 REPLAY_T_LOW = float(_raw_t_low) if _raw_t_low else None
 REPLAY_T_HIGH = float(_raw_t_high) if _raw_t_high else None
+
+# ASVspoof 2019 LA (synthetic) LFCC CNN — second stage after inverted-Mel replay.
+_DEFAULT_LA_CKPT = (
+    _REPO_ROOT
+    / "replay-cnn-baseline"
+    / "experiments"
+    / "lfcc_la2019"
+    / "runs"
+    / "lfcc_la"
+    / "best_lfcc_la2019.pt"
+)
+# Off by default: LFCC-LA is strong on ASVspoof LA but scores ~1.0 on browser-mic
+# speech (domain mismatch), same failure mode as mixed-LFCC replay earlier.
+LA_ENABLED = os.getenv("LA_ENABLED", "false").lower() in {"1", "true", "yes"}
+# When enabled, scores are always returned; only hard-block if this is true
+# (use for lab ASVspoof files — unsafe for laptop/browser verify).
+LA_HARD_GATE = os.getenv("LA_HARD_GATE", "false").lower() in {"1", "true", "yes"}
+LA_CHECKPOINT = Path(os.getenv("LA_CHECKPOINT", str(_DEFAULT_LA_CKPT)))
+_raw_la_thr = os.getenv("LA_THRESHOLD", "").strip()
+LA_THRESHOLD = float(_raw_la_thr) if _raw_la_thr else None
+_raw_la_margin = os.getenv("LA_MARGIN", "0.10").strip()
+LA_MARGIN = float(_raw_la_margin) if _raw_la_margin else 0.10
+_raw_la_t_low = os.getenv("LA_T_LOW", "").strip()
+_raw_la_t_high = os.getenv("LA_T_HIGH", "").strip()
+LA_T_LOW = float(_raw_la_t_low) if _raw_la_t_low else None
+LA_T_HIGH = float(_raw_la_t_high) if _raw_la_t_high else None

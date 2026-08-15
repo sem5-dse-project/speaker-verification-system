@@ -62,9 +62,9 @@ function Verification() {
             Voice Verification
           </h1>
           <p className="text-base text-slate-600 sm:text-lg">
-            Record your voice and submit it for verification. Quiet or silent clips are rejected,
-            clear replay is blocked, uncertain clips ask you to re-record, then live speech is
-            matched to your enrolled template.
+            Record your voice and submit it for verification. Quiet clips are rejected, clear replay
+            is blocked, uncertain clips ask you to re-record, then live speech is matched to your
+            enrolled template.
           </p>
         </header>
 

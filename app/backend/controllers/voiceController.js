@@ -167,6 +167,8 @@ const uploadVerification = async (req, res) => {
             accepted: false,
             decision: 'NO_SPEECH',
             rms: replay.rms,
+            replay: replay.replay,
+            la: replay.la,
           },
           log,
         })
@@ -194,6 +196,39 @@ const uploadVerification = async (req, res) => {
             threshold_high: replay.threshold_high,
             accepted: false,
             decision: 'REPLAY',
+            is_synthetic: false,
+            replay: replay.replay,
+            la: replay.la,
+          },
+          log,
+        })
+      }
+
+      if (replay.decision === 'SYNTHETIC' || replay.is_synthetic) {
+        const log = await verificationLogModel.createVerificationLog({
+          userId: req.user.id,
+          voiceSampleId: sample.id,
+          score: replay.score,
+          threshold: replay.threshold,
+          accepted: false,
+          decision: 'SYNTHETIC',
+        })
+
+        return res.status(201).json({
+          success: true,
+          message: 'Verification rejected: synthetic spoof detected',
+          sample,
+          replay,
+          result: {
+            score: replay.score,
+            threshold: replay.threshold,
+            threshold_low: replay.threshold_low,
+            threshold_high: replay.threshold_high,
+            accepted: false,
+            decision: 'SYNTHETIC',
+            is_synthetic: true,
+            replay: replay.replay,
+            la: replay.la,
           },
           log,
         })
@@ -221,6 +256,8 @@ const uploadVerification = async (req, res) => {
             threshold_high: replay.threshold_high,
             accepted: false,
             decision: 'UNCERTAIN',
+            replay: replay.replay,
+            la: replay.la,
           },
           log,
         })
@@ -252,6 +289,8 @@ const uploadVerification = async (req, res) => {
         threshold: mlResult.threshold,
         accepted: mlResult.accepted,
         decision: mlResult.decision,
+        replay: replay?.replay,
+        la: replay?.la,
       },
       log,
     })

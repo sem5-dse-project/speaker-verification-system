@@ -92,6 +92,8 @@ runs/
 **/cache/
 wandb/
 mlruns/
+mlflow.db
+**/mlflow.db
 lightning_logs/
 
 # Jupyter

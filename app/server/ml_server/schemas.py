@@ -37,6 +37,15 @@ class VerifyResponse(BaseModel):
     rms: float | None = None
 
 
+class SpoofStageResult(BaseModel):
+    score: float
+    threshold: float
+    threshold_low: float | None = None
+    threshold_high: float | None = None
+    decision: str
+    feature_type: str | None = None
+
+
 class ReplayDetectResponse(BaseModel):
     success: bool = True
     score: float
@@ -44,7 +53,10 @@ class ReplayDetectResponse(BaseModel):
     threshold_low: float | None = None
     threshold_high: float | None = None
     is_replay: bool
+    is_synthetic: bool = False
     accepted: bool
     decision: str
     feature_type: str | None = None
     rms: float | None = None
+    replay: SpoofStageResult | None = None
+    la: SpoofStageResult | None = None
