@@ -14,7 +14,7 @@ import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from ml_server.audio import has_sufficient_speech, load_audio_bytes
+from ml_server.audio import extract_speech_audio, load_audio_bytes
 from ml_server.anti_spoof import score_anti_spoof
 from ml_server.config import (
     DEFAULT_THRESHOLD,
@@ -27,6 +27,7 @@ from ml_server.config import (
     PORT,
     REPLAY_CHECKPOINT,
     REPLAY_ENABLED,
+    REPLAY_THRESHOLD,
 )
 from ml_server.ecapa import embed_audio_list, load_ecapa_encoder
 from ml_server.schemas import (
@@ -124,14 +125,45 @@ async def replay_detect(
 
     try:
         wave = load_audio_bytes(data)
+        vad = extract_speech_audio(wave)
+        if not vad.has_speech:
+            threshold_value = (
+                float(threshold)
+                if threshold is not None
+                else float(REPLAY_THRESHOLD) if REPLAY_THRESHOLD is not None else 0.5
+            )
+            return ReplayDetectResponse(
+                score=0.0,
+                threshold=threshold_value,
+                is_replay=False,
+                is_synthetic=False,
+                accepted=False,
+                decision="NO_SPEECH",
+                feature_type="silero_vad",
+                rms=vad.rms,
+                speech_ms=vad.speech_ms,
+                total_ms=vad.total_ms,
+                num_speech_segments=vad.num_speech_segments,
+            )
+
+        wave = vad.speech_waveform
         result = score_anti_spoof(
             wave,
             threshold=threshold,
             la_threshold=la_threshold,
             device=DEVICE,
         )
+        result["speech_ms"] = vad.speech_ms
+        result["total_ms"] = vad.total_ms
+        result["num_speech_segments"] = vad.num_speech_segments
+        result["rms"] = vad.rms
+    except RuntimeError:
+        raise HTTPException(
+            status_code=503,
+            detail="Speech preprocessing is unavailable on this server",
+        ) from None
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Invalid or unsupported audio input") from exc
 
     return ReplayDetectResponse(**result)
 
@@ -143,11 +175,22 @@ async def embed(
     """Return one embedding per uploaded file."""
     blobs = await _read_uploads(files)
     try:
-        waves = [load_audio_bytes(b) for b in blobs]
+        waves = []
+        for blob in blobs:
+            wave = load_audio_bytes(blob)
+            vad = extract_speech_audio(wave)
+            if not vad.has_speech:
+                raise ValueError("No usable speech detected in one or more audio files")
+            waves.append(vad.speech_waveform)
         encoder = get_encoder()
         embs = embed_audio_list(encoder, waves, device=DEVICE)
+    except RuntimeError:
+        raise HTTPException(
+            status_code=503,
+            detail="Speech preprocessing is unavailable on this server",
+        ) from None
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Invalid or unsupported audio input") from exc
 
     return EmbedResponse(
         num_files=len(embs),
@@ -170,12 +213,23 @@ async def enroll_template(
     """
     blobs = await _read_uploads(files)
     try:
-        waves = [load_audio_bytes(b) for b in blobs]
+        waves = []
+        for blob in blobs:
+            wave = load_audio_bytes(blob)
+            vad = extract_speech_audio(wave)
+            if not vad.has_speech:
+                raise ValueError("No usable speech detected in one or more audio files")
+            waves.append(vad.speech_waveform)
         encoder = get_encoder()
         embs = embed_audio_list(encoder, waves, device=DEVICE)
         template = average_template(embs)
+    except RuntimeError:
+        raise HTTPException(
+            status_code=503,
+            detail="Speech preprocessing is unavailable on this server",
+        ) from None
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Invalid or unsupported audio input") from exc
 
     return EnrollTemplateResponse(
         num_samples=len(blobs),
@@ -212,23 +266,35 @@ async def verify(
         if template.ndim != 1 or template.size == 0:
             raise ValueError("embedding must be a 1-D JSON array of floats")
         wave = load_audio_bytes(data)
-        ok_speech, rms = has_sufficient_speech(wave)
-        if not ok_speech:
+        vad = extract_speech_audio(wave)
+        if not vad.has_speech:
             thr = float(threshold) if threshold is not None else DEFAULT_THRESHOLD
             return VerifyResponse(
                 score=0.0,
                 threshold=thr,
                 accepted=False,
                 decision="NO_SPEECH",
-                rms=rms,
+                rms=vad.rms,
+                speech_ms=vad.speech_ms,
+                total_ms=vad.total_ms,
+                num_speech_segments=vad.num_speech_segments,
             )
+        wave = vad.speech_waveform
         encoder = get_encoder()
         probe = embed_audio_list(encoder, [wave], device=DEVICE)[0]
         score = cosine_similarity(template, probe)
         result = decide(score, threshold)
-        result["rms"] = rms
+        result["rms"] = vad.rms
+        result["speech_ms"] = vad.speech_ms
+        result["total_ms"] = vad.total_ms
+        result["num_speech_segments"] = vad.num_speech_segments
+    except RuntimeError:
+        raise HTTPException(
+            status_code=503,
+            detail="Speech preprocessing is unavailable on this server",
+        ) from None
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="Invalid or unsupported audio input") from exc
 
     return VerifyResponse(**result)
 

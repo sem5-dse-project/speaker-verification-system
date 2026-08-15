@@ -3,7 +3,17 @@
 Stateless ML core for the voice authentication system.
 
 - **Express** (`app/backend`): users, JWT, WAV file storage, MySQL  
-- **This server** (`app/server`): ECAPA embeddings, average enrollment template, cosine verify, inverted-Mel **replay detect**
+- **This server** (`app/server`): Silero VAD speech extraction, anti-spoof gating, ECAPA embeddings, cosine verify
+
+## Runtime pipeline
+
+Incoming audio goes through:
+
+1. **Silero VAD** (speech-only extraction, silence removal)
+2. **Replay / anti-spoof** detection
+3. **ECAPA-TDNN** embedding and scoring
+
+This improves robustness by removing non-speech regions before replay and speaker checks.
 
 Model: [`speechbrain/spkrec-ecapa-voxceleb`](https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb)
 
@@ -15,7 +25,7 @@ Model: [`speechbrain/spkrec-ecapa-voxceleb`](https://huggingface.co/speechbrain/
 | `POST` | `/embed` | One embedding per uploaded file |
 | `POST` | `/enroll/template` | Average template from N enrollment files (use 3) |
 | `POST` | `/verify` | Probe audio + template JSON → score / ACCEPT|REJECT |
-| `POST` | `/replay/detect` | Inverted-Mel CNN → LIVE\|UNCERTAIN\|REPLAY (gate before verify) |
+| `POST` | `/replay/detect` | Silero VAD + anti-spoof → LIVE\|UNCERTAIN\|REPLAY\|SYNTHETIC\|NO_SPEECH |
 
 Default replay weights: mixed ASVspoof **2017 + PA2019** **inverted-Mel** checkpoint  
 (`replay-cnn-baseline/experiments/inverted_mel_mixed_2017_pa2019/.../best_inverted_mel_mixed_2017_pa2019.pt`).  
@@ -49,6 +59,8 @@ pytest
 ```
 
 Tests cover scoring, WAV decode, schemas, and FastAPI routes with the ECAPA encoder **mocked** (no model download required).
+
+VAD tests cover speech, silence, pauses, noisy input, too-short clips, invalid audio, and no-speech responses.
 
 ## Run
 
@@ -113,4 +125,15 @@ server/
 
 - Default threshold `0.25` (tune from EER experiments; LibriSpeech/Sinhala runs were ~0.28–0.29).
 - Audio is converted to mono 16 kHz; clips longer than `MAX_SECONDS` are center-cropped.
-- Replay detection / enhancement can be added as extra routes later.
+- Silero VAD runs before replay/ECAPA and is CPU-friendly with ONNX (`VAD_USE_ONNX=true`).
+
+## VAD configuration
+
+Use `.env` values to tune speech extraction behavior:
+
+- `VAD_SPEECH_THRESHOLD`: frame-level speech probability threshold.
+- `VAD_MIN_SPEECH_MS`: minimum duration of a speech segment.
+- `VAD_MIN_SILENCE_MS`: silence required to split adjacent segments.
+- `VAD_SPEECH_PAD_MS`: padding added around each speech segment.
+- `VAD_MIN_TOTAL_SPEECH_MS`: minimum total retained speech duration.
+- `VAD_MIN_AUDIO_MS`: fail fast for very short clips.
