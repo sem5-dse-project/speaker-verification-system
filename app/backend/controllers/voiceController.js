@@ -1,17 +1,238 @@
 const fs = require('fs')
 const path = require('path')
+const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
 const voiceModel = require('../models/voiceModel')
 const templateModel = require('../models/templateModel')
+const userModel = require('../models/userModel')
 const verificationLogModel = require('../models/verificationLogModel')
 const mlClient = require('../services/mlClient')
+const {
+  findBestTemplateMatch,
+  cosineSimilarity,
+  decideByThreshold,
+} = require('../services/similarity')
+const {
+  createVoiceLoginSession,
+  getVoiceLoginSession,
+  deleteVoiceLoginSession,
+} = require('../services/voiceLoginCache')
 
 const REQUIRED_ENROLLMENT_SAMPLES = Number(process.env.REQUIRED_ENROLLMENT_SAMPLES || 3)
+const DEFAULT_VERIFY_THRESHOLD = Number(process.env.DEFAULT_VERIFY_THRESHOLD || 0.25)
 const BACKEND_ROOT = path.join(__dirname, '..')
 
 const toRelativePath = (absolutePath) =>
   path.relative(BACKEND_ROOT, absolutePath).replace(/\\/g, '/')
 
 const toAbsolutePath = (relativePath) => path.join(BACKEND_ROOT, relativePath)
+
+const signUserToken = (user) =>
+  jwt.sign(
+    { id: user.id, username: user.username },
+    process.env.JWT_SECRET,
+    { expiresIn: '1d' },
+  )
+
+const runReplayDetection = async (absolutePath) => {
+  if (!mlClient.REPLAY_DETECTION) {
+    return null
+  }
+
+  try {
+    return await mlClient.detectReplay(absolutePath)
+  } catch (error) {
+    const message = error.message || ''
+    if (message.includes('Replay checkpoint not found')) {
+      const unavailable = new Error('Replay detection is unavailable on this server')
+      unavailable.statusCode = 503
+      throw unavailable
+    }
+    throw error
+  }
+}
+
+const identifyVoice = async (req, res) => {
+  let absolutePath = null
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'WAV file is required',
+      })
+    }
+
+    const relativePath = toRelativePath(req.file.path)
+    absolutePath = toAbsolutePath(relativePath)
+
+    const replay = await runReplayDetection(absolutePath)
+    if (replay?.is_replay) {
+      return res.status(403).json({
+        success: false,
+        message: 'Voice login rejected: replay attack detected',
+        replay,
+      })
+    }
+
+    const { embedding, embedding_dim } = await mlClient.extractEmbedding(absolutePath)
+    const templates = await templateModel.getAllTemplatesWithUsers()
+
+    if (!templates.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'No enrolled voice templates are available for identification',
+      })
+    }
+
+    const bestMatch = findBestTemplateMatch(embedding, templates)
+    if (!bestMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Could not identify a matching user',
+      })
+    }
+
+    const cached = createVoiceLoginSession({
+      probe_embedding: embedding,
+      embedding_dim,
+      identified_user_id: bestMatch.user_id,
+      identified_username: bestMatch.username,
+      identify_score: bestMatch.score,
+      replay,
+    })
+
+    return res.json({
+      success: true,
+      message: 'Voice identification complete',
+      temporary_login_token: cached.token,
+      expires_at: cached.expires_at,
+      ttl_seconds: cached.ttl_seconds,
+      identified_user: {
+        id: bestMatch.user_id,
+        username: bestMatch.username,
+      },
+      similarity_score: bestMatch.score,
+    })
+  } catch (error) {
+    if (error.statusCode === 503) {
+      return res.status(503).json({
+        success: false,
+        message: error.message,
+      })
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to identify voice',
+      error: error.message,
+    })
+  } finally {
+    if (absolutePath) {
+      try {
+        fs.unlinkSync(absolutePath)
+      } catch {
+        /* ignore cleanup errors */
+      }
+    }
+  }
+}
+
+const loginWithVoice = async (req, res) => {
+  try {
+    const { temporary_login_token, password } = req.body
+
+    if (!temporary_login_token || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'temporary_login_token and password are required',
+      })
+    }
+
+    const session = getVoiceLoginSession(temporary_login_token)
+    if (!session) {
+      return res.status(401).json({
+        success: false,
+        message: 'Voice login session is missing or expired. Please record again.',
+      })
+    }
+
+    const user = await userModel.findAuthById(session.identified_user_id)
+    if (!user) {
+      deleteVoiceLoginSession(temporary_login_token)
+      return res.status(404).json({
+        success: false,
+        message: 'Identified user no longer exists',
+      })
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password)
+    if (!validPassword) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
+      })
+    }
+
+    const template = await templateModel.getTemplateByUserId(user.id)
+    if (!template) {
+      deleteVoiceLoginSession(temporary_login_token)
+      return res.status(400).json({
+        success: false,
+        message: 'No enrollment template found for identified user',
+      })
+    }
+
+    const score = cosineSimilarity(session.probe_embedding, template.embedding)
+    const threshold =
+      template.threshold === null || template.threshold === undefined
+        ? DEFAULT_VERIFY_THRESHOLD
+        : Number(template.threshold)
+    const voiceDecision = decideByThreshold(score, threshold)
+
+    const log = await verificationLogModel.createVerificationLog({
+      userId: user.id,
+      voiceSampleId: null,
+      score: voiceDecision.score,
+      threshold: voiceDecision.threshold,
+      accepted: voiceDecision.accepted,
+      decision: voiceDecision.decision,
+    })
+
+    deleteVoiceLoginSession(temporary_login_token)
+
+    if (!voiceDecision.accepted) {
+      return res.status(401).json({
+        success: false,
+        message: 'Voice verification failed for identified user',
+        identified_user: {
+          id: user.id,
+          username: user.username,
+        },
+        voice: voiceDecision,
+        log,
+      })
+    }
+
+    const token = signUserToken(user)
+
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+      },
+      voice: voiceDecision,
+      log,
+    })
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to complete voice login',
+      error: error.message,
+    })
+  }
+}
 
 const resetEnrollment = async (req, res) => {
   try {
@@ -140,10 +361,9 @@ const uploadVerification = async (req, res) => {
     }
 
     const absolutePath = toAbsolutePath(relativePath)
-    let replay = null
+    const replay = await runReplayDetection(absolutePath)
 
-    if (mlClient.REPLAY_DETECTION) {
-      replay = await mlClient.detectReplay(absolutePath)
+    if (replay) {
       if (replay.decision === 'NO_SPEECH') {
         const log = await verificationLogModel.createVerificationLog({
           userId: req.user.id,
@@ -156,7 +376,7 @@ const uploadVerification = async (req, res) => {
 
         return res.status(201).json({
           success: true,
-          message: 'No speech detected — please speak clearly and try again',
+          message: 'No speech detected - please speak clearly and try again',
           sample,
           replay,
           result: {
@@ -246,7 +466,7 @@ const uploadVerification = async (req, res) => {
 
         return res.status(201).json({
           success: true,
-          message: 'Audio quality uncertain — please re-record and try again',
+          message: 'Audio quality uncertain - please re-record and try again',
           sample,
           replay,
           result: {
@@ -295,6 +515,13 @@ const uploadVerification = async (req, res) => {
       log,
     })
   } catch (error) {
+    if (error.statusCode === 503) {
+      return res.status(503).json({
+        success: false,
+        message: error.message,
+      })
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Failed to verify audio',
@@ -354,6 +581,8 @@ const getVerificationLogs = async (req, res) => {
 }
 
 module.exports = {
+  identifyVoice,
+  loginWithVoice,
   resetEnrollment,
   uploadEnrollment,
   uploadVerification,
