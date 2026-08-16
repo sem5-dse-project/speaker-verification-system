@@ -66,6 +66,14 @@ const identifyVoice = async (req, res) => {
     absolutePath = toAbsolutePath(relativePath)
 
     const replay = await runReplayDetection(absolutePath)
+    if (replay?.decision === 'NO_SPEECH') {
+      return res.status(400).json({
+        success: false,
+        message: 'No speech detected - please speak clearly and try again',
+        replay,
+      })
+    }
+
     if (replay?.is_replay) {
       return res.status(403).json({
         success: false,

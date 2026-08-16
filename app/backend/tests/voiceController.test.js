@@ -36,6 +36,30 @@ describe('voiceController', () => {
   })
 
   describe('identifyVoice', () => {
+    it('asks re-record when no speech is detected before embedding extraction', async () => {
+      mlClient.detectReplay.mockResolvedValue({
+        score: 0,
+        threshold: 0.76,
+        is_replay: false,
+        accepted: false,
+        decision: 'NO_SPEECH',
+      })
+
+      const req = { file: { path: pathJoinSafe() } }
+      const res = mockRes()
+
+      await identifyVoice(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(mlClient.extractEmbedding).not.toHaveBeenCalled()
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('No speech detected'),
+        }),
+      )
+    })
+
     it('rejects replay attacks before embedding extraction', async () => {
       mlClient.detectReplay.mockResolvedValue({
         score: 0.9,
