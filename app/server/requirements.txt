@@ -9,3 +9,5 @@ soundfile>=0.12
 speechbrain>=1.0.0
 huggingface_hub>=0.20
 pydantic>=2.0
+silero-vad>=5.1
+onnxruntime>=1.18
