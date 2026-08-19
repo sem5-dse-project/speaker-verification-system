@@ -9,3 +9,5 @@ pretrained_models/
 *.pth
 *.ckpt
 .DS_Store
+checkpoints/
+.venv-linux/
