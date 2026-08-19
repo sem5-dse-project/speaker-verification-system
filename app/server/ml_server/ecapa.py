@@ -82,8 +82,15 @@ def embed_audio_list_fused(
         # 2. Enhanced waveform & embedding
         enhanced_wave = enhancer.process(wave.cpu())
         enhanced_emb = encode_waveforms(classifier, enhanced_wave.unsqueeze(0).to(device))
+
         # 3. Fuse
-        fused, _ = fusion_model(noisy_emb, enhanced_emb)
+        fusion_out = fusion_model(noisy_emb, enhanced_emb)
+
+        # Handle models that return tuples (like NoiseAwareFusion) vs single tensors
+        if isinstance(fusion_out, tuple):
+            fused = fusion_out[0]
+        else:
+            fused = fusion_out
 
         embs.append(fused.squeeze(0).cpu().numpy())
     return np.stack(embs, axis=0).astype(np.float32)
