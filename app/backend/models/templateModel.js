@@ -7,7 +7,7 @@ const upsertTemplate = async (userId, embedding, embeddingDim, numSamples, thres
     `
       INSERT INTO enrollment_templates
         (user_id, embedding, embedding_dim, num_samples, threshold)
-      VALUES (?, CAST(? AS JSON), ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         embedding = VALUES(embedding),
         embedding_dim = VALUES(embedding_dim),
