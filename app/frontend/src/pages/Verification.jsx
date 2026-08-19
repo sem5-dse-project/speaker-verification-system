@@ -6,11 +6,21 @@ import PrimaryButton from '../components/PrimaryButton.jsx'
 import api from '../services/api.js'
 import { formatVerificationResult } from '../utils/verificationResult.js'
 
+const STATUS_STYLES = {
+  success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  warning: 'border-amber-200 bg-amber-50 text-amber-800',
+  error: 'border-rose-200 bg-rose-50 text-rose-800',
+  neutral: 'border-slate-200 bg-slate-50 text-slate-700',
+}
+
+const metricClassName =
+  'rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-700 shadow-sm'
+
 function Verification() {
   const navigate = useNavigate()
   const [recording, setRecording] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [statusMessage, setStatusMessage] = useState({ type: '', text: '' })
+  const [statusMessage, setStatusMessage] = useState({ type: '', text: '', details: [] })
 
   const handleVerifyVoice = async () => {
     if (!recording?.blob) {
@@ -109,6 +119,59 @@ function Verification() {
 
             {!statusMessage.type && <p className="text-slate-500">Status messages will appear here.</p>}
           </div>
+
+          {statusMessage.details?.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Verification metrics</h2>
+                  <p className="text-sm text-slate-600">
+                    Stage-by-stage breakdown for the detected voice sample.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {statusMessage.details.map((stage, index) => (
+                  <article
+                    key={`${stage.label}-${index}`}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                  >
+                    <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                          Stage {index + 1}
+                        </p>
+                        <h3 className="text-base font-semibold text-slate-900">{stage.label}</h3>
+                        <p className="mt-1 text-sm text-slate-600">{stage.summary}</p>
+                      </div>
+
+                      <span
+                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${STATUS_STYLES[stage.status] || STATUS_STYLES.neutral}`}
+                      >
+                        {stage.status}
+                      </span>
+                    </div>
+
+                    {stage.metrics?.length > 0 && (
+                      <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {stage.metrics.map((metric) => (
+                          <div key={`${stage.label}-${metric.label}`} className={metricClassName}>
+                            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                              {metric.label}
+                            </dt>
+                            <dd className="mt-1 text-sm font-semibold text-slate-900">
+                              {metric.value}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </main>
