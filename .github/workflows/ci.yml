@@ -79,13 +79,11 @@ jobs:
         timeout-minutes: 5
         run: |
           set -euxo pipefail
-          # azure.archive.ubuntu.com (apt-mirrors.txt) can hang on GitHub runners
-          sudo rm -f /etc/apt/apt-mirrors.txt
-          for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list; do
-            [ -f "$f" ] || continue
-            sudo sed -i 's|http://azure.archive.ubuntu.com|http://archive.ubuntu.com|g' "$f"
-            sudo sed -i 's|https://azure.archive.ubuntu.com|https://archive.ubuntu.com|g' "$f"
-          done
+          # GH runners default azure mirrors can hang; point mirror list at archive.ubuntu.com
+          echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
+          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+            sudo sed -i 's|URIs: mirror+file:/etc/apt/apt-mirrors.txt|URIs: http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources
+          fi
           echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-ci-retries
           echo 'Acquire::http::Timeout "30";' | sudo tee -a /etc/apt/apt.conf.d/80-ci-retries
           sudo apt-get update -qq
