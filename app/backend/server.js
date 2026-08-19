@@ -31,6 +31,23 @@ app.get('/api/health', (_req, res) => {
   })
 })
 
+app.get('/api/health/db', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1')
+
+    return res.json({
+      success: true,
+      message: 'Database connection is healthy',
+    })
+  } catch (error) {
+    return res.status(503).json({
+      success: false,
+      message: 'Database connection failed',
+      error: error.message,
+    })
+  }
+})
+
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/voice', voiceRoutes)
