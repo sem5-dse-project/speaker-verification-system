@@ -76,7 +76,20 @@ jobs:
             app/server/requirements-dev.txt
 
       - name: Install system audio libs
-        run: sudo apt-get update && sudo apt-get install -y libsndfile1
+        timeout-minutes: 5
+        run: |
+          set -euxo pipefail
+          # azure.archive.ubuntu.com (apt-mirrors.txt) can hang on GitHub runners
+          sudo rm -f /etc/apt/apt-mirrors.txt
+          for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list; do
+            [ -f "$f" ] || continue
+            sudo sed -i 's|http://azure.archive.ubuntu.com|http://archive.ubuntu.com|g' "$f"
+            sudo sed -i 's|https://azure.archive.ubuntu.com|https://archive.ubuntu.com|g' "$f"
+          done
+          echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-ci-retries
+          echo 'Acquire::http::Timeout "30";' | sudo tee -a /etc/apt/apt.conf.d/80-ci-retries
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libsndfile1
 
       - name: Install Python dependencies (CPU torch)
         run: |
