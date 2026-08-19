@@ -14,6 +14,15 @@ SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", "16000"))
 MAX_SECONDS = float(os.getenv("MAX_SECONDS", "4.0"))
 # Cosine ACCEPT threshold (raised so silence/noise rarely clears speaker verify)
 DEFAULT_THRESHOLD = float(os.getenv("DEFAULT_THRESHOLD", "0.45"))
+# Silero VAD preprocessing (before replay + ECAPA)
+VAD_ENABLED = os.getenv("VAD_ENABLED", "true").lower() in {"1", "true", "yes"}
+VAD_USE_ONNX = os.getenv("VAD_USE_ONNX", "true").lower() in {"1", "true", "yes"}
+VAD_SPEECH_THRESHOLD = float(os.getenv("VAD_SPEECH_THRESHOLD", "0.50"))
+VAD_MIN_AUDIO_MS = float(os.getenv("VAD_MIN_AUDIO_MS", "250"))
+VAD_MIN_SPEECH_MS = float(os.getenv("VAD_MIN_SPEECH_MS", "120"))
+VAD_MIN_SILENCE_MS = float(os.getenv("VAD_MIN_SILENCE_MS", "120"))
+VAD_SPEECH_PAD_MS = float(os.getenv("VAD_SPEECH_PAD_MS", "30"))
+VAD_MIN_TOTAL_SPEECH_MS = float(os.getenv("VAD_MIN_TOTAL_SPEECH_MS", "300"))
 # Frame-level speech gate — require sustained louder frames (rejects ambient mic)
 # Defaults tuned on laptop verify WAVs that false-ACCEPTed without speech.
 MIN_SPEECH_FRAME_RMS = float(os.getenv("MIN_SPEECH_FRAME_RMS", "0.08"))

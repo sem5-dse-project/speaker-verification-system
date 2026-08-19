@@ -26,13 +26,14 @@ const buildUploader = (sampleType) => {
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
       const baseDir = sampleType === 'enrollment' ? 'enrollments' : 'verifications'
-      const userDir = path.join(__dirname, '..', 'uploads', baseDir, `user_${req.user.id}`)
+      const userId = req.user?.id ?? 'anonymous'
+      const userDir = path.join(__dirname, '..', 'uploads', baseDir, `user_${userId}`)
       fs.mkdirSync(userDir, { recursive: true })
       cb(null, userDir)
     },
     filename: (req, file, cb) => {
       const prefix = sampleType === 'enrollment' ? 'enroll' : 'verify'
-      const userId = req.user?.id ?? 'unknown'
+      const userId = req.user?.id ?? 'anonymous'
       const sampleIdx = sampleIndexFromName(file.originalname)
       const samplePart = sampleIdx ? `s${sampleIdx}` : 's'
       // Example: enroll_u1_s2_20260730_083915142_a3f2c1.wav

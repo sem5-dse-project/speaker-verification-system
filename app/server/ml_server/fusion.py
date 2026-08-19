@@ -71,21 +71,10 @@ class CrossAttentionFusion(nn.Module):
 # ----------------------------------------------------------------------
 # 3. NoiseAwareFusion (your latest model with noise extraction)
 # ----------------------------------------------------------------------
-
-
 class NoiseAwareFusion(nn.Module):
-    def __init__(
-        self,
-        embedding_dim=192,
-        num_heads=4,
-        dropout=0.1,
-        noise_bottleneck_dim=128,
-    ):
-
+    def __init__(self, embedding_dim=192, num_heads=4, dropout=0.1, noise_bottleneck_dim=128):
         super().__init__()
-
         assert embedding_dim % num_heads == 0
-
         self.embedding_dim = embedding_dim
 
         # Shared projection
@@ -117,7 +106,6 @@ class NoiseAwareFusion(nn.Module):
 
         # Transformer-style blocks
         self.norm1 = nn.LayerNorm(embedding_dim)
-
         self.norm2 = nn.LayerNorm(embedding_dim)
 
         self.mlp = nn.Sequential(
@@ -130,111 +118,26 @@ class NoiseAwareFusion(nn.Module):
 
         self.out_proj = nn.Linear(embedding_dim, embedding_dim)
 
-        # ---------------------------------------------------------------------
-        # VERY IMPORTANT
-        #
-        # Start with a small residual contribution.
-        #
-        # fused = noisy + alpha * correction
-        #
-        # This prevents the fusion network from immediately replacing the
-        # speaker embedding with an arbitrary new embedding space.
-        # ---------------------------------------------------------------------
-
         self.alpha = nn.Parameter(torch.tensor(0.1))
 
     def forward(self, noisy_emb, enhanced_emb):
-
-        # ---------------------------------------------------------------------
-        # Normalize inputs
-        # ---------------------------------------------------------------------
-
         noisy_emb = F.normalize(noisy_emb, p=2, dim=-1)
-
         enhanced_emb = F.normalize(enhanced_emb, p=2, dim=-1)
-
-        # ---------------------------------------------------------------------
-        # Project noisy + enhanced
-        # ---------------------------------------------------------------------
-
         n = self.proj(noisy_emb)
-
         e = self.proj(enhanced_emb)
-
-        # ---------------------------------------------------------------------
-        # Noise representation
-        # ---------------------------------------------------------------------
-
         noise_est = self.noise_extractor(torch.cat([noisy_emb, enhanced_emb], dim=-1))
-
-        # ---------------------------------------------------------------------
-        # Three tokens
-        # ---------------------------------------------------------------------
-
-        x = torch.stack([n, e, noise_est], dim=1)
-
-        # Shape:
-        #
-        # B x 3 x D
-        #
+        x = torch.stack([n, e, noise_est], dim=1)  # Shape: B x 3 x D
 
         attn_out, attn_weights = self.cross_attn(x, x, x, need_weights=True)
-
-        # ---------------------------------------------------------------------
-        # Residual attention block
-        # ---------------------------------------------------------------------
-
         x = self.norm1(x + attn_out)
-
-        # ---------------------------------------------------------------------
-        # Attention pooling
-        # ---------------------------------------------------------------------
-
         token_importance = attn_weights.mean(dim=1)
-
         pooled = (x * token_importance.unsqueeze(-1)).sum(dim=1)
-
-        # ---------------------------------------------------------------------
-        # Noise gate
-        # ---------------------------------------------------------------------
-
         gate = self.noise_gate(noise_est)
-
         pooled = gate * pooled + (1.0 - gate) * x.mean(dim=1)
-
-        # ---------------------------------------------------------------------
-        # MLP
-        # ---------------------------------------------------------------------
-
         mlp_out = self.mlp(pooled)
-
         out = self.norm2(pooled + mlp_out)
-
-        # ---------------------------------------------------------------------
-        # Correction
-        # ---------------------------------------------------------------------
-
         correction = self.out_proj(out)
-
-        # ---------------------------------------------------------------------
-        # Residual fusion
-        #
-        # Instead of:
-        #
-        #     fused = correction
-        #
-        # use:
-        #
-        #     fused = noisy + alpha * correction
-        #
-        # ---------------------------------------------------------------------
-
         fused = noisy_emb + self.alpha * correction
-
-        # ---------------------------------------------------------------------
-        # Final L2 normalization
-        # ---------------------------------------------------------------------
-
         fused = F.normalize(fused, p=2, dim=-1)
 
         return fused, noise_est
@@ -283,7 +186,6 @@ def load_fusion_model(
     else:
         state = ckpt
 
-    # ---- FIX: Strip torch.compile prefix if present ----
     if any(k.startswith("_orig_mod.") for k in state.keys()):
         state = {k.replace("_orig_mod.", ""): v for k, v in state.items()}
 

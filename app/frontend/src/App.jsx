@@ -6,6 +6,7 @@ import Enrollment from './pages/Enrollment.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Verification from './pages/Verification.jsx'
+import VoiceLogin from './pages/VoiceLogin.jsx'
 
 function App() {
   const { isAuthenticated } = useAuth()
@@ -13,6 +14,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/voice-login" element={<VoiceLogin />} />
       <Route path="/register" element={<Register />} />
 
       <Route

@@ -21,10 +21,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const requestUrl = error?.config?.url || ''
+    const hasAuthHeader = Boolean(error?.config?.headers?.Authorization)
+    const isPublicAuthFlow =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/voice/login') ||
+      requestUrl.includes('/voice/identify')
+
     if (
       error?.response?.status === 401 &&
       typeof unauthorizedHandler === 'function' &&
-      !error?.config?.url?.includes('/auth/login')
+      hasAuthHeader &&
+      !isPublicAuthFlow
     ) {
       unauthorizedHandler(error)
     }

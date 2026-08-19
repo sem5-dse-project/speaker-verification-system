@@ -30,8 +30,18 @@ const findById = async (id) => {
   return rows[0] || null
 }
 
+const findAuthById = async (id) => {
+  const [rows] = await pool.query(
+    'SELECT id, username, password FROM users WHERE id = ?',
+    [id],
+  )
+
+  return rows[0] || null
+}
+
 module.exports = {
   createUser,
   findByUsername,
   findById,
+  findAuthById,
 }
