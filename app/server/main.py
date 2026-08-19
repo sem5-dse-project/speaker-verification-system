@@ -206,11 +206,7 @@ async def enroll_template(
     try:
         waves = [load_audio_bytes(b) for b in blobs]
         encoder = get_encoder()
-
-        if _fusion_model is not None:
-            embs = embed_audio_list_fused(encoder, waves, _enhancer, _fusion_model, device=DEVICE)
-        else:
-            embs = embed_audio_list(encoder, waves, device=DEVICE)
+        embs = embed_audio_list(encoder, waves, device=DEVICE)
 
         template = average_template(embs)
     except Exception as exc:
