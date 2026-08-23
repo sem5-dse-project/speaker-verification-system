@@ -33,12 +33,14 @@ class MLP(nn.Module):
 # ----------------------------------------------------------------------
 # 2. SelfAttentionFusion (your original self‑attention gate)
 # ----------------------------------------------------------------------
+
+
 class SelfAttentionFusion(nn.Module):
-    def __init__(self, embedding_dim: int = 192, num_heads: int = 4, dropout: float = 0.1):
+    def __init__(self, embedding_dim=192, num_heads=4, dropout=0.1):
         super().__init__()
         assert embedding_dim % num_heads == 0
         self.proj = nn.Linear(embedding_dim, embedding_dim)
-        self.self_attn = nn.MultiheadAttention(
+        self.attn = nn.MultiheadAttention(
             embed_dim=embedding_dim,
             num_heads=num_heads,
             dropout=dropout,
@@ -55,11 +57,14 @@ class SelfAttentionFusion(nn.Module):
         )
         self.out_proj = nn.Linear(embedding_dim, embedding_dim)
 
-    def forward(self, noisy_emb, enhanced_emb, quality_vec=None):
+    def forward(self, noisy_emb, enhanced_emb):
         n = self.proj(noisy_emb)
         e = self.proj(enhanced_emb)
-        x = torch.stack([n, e], dim=1)
-        attn_out, _ = self.self_attn(x, x, x)
+
+        # FIX: Ensure contiguous memory layout for the attention backend
+        x = torch.stack([n, e], dim=1).contiguous()
+
+        attn_out, _ = self.attn(x, x, x, need_weights=False)
         x = self.norm1(x + attn_out)
         pooled = x.mean(dim=1)
         mlp_out = self.mlp(pooled)
@@ -69,42 +74,20 @@ class SelfAttentionFusion(nn.Module):
 
 
 # ----------------------------------------------------------------------
-# 3. NoiseAwareFusion (your latest model with noise extraction)
+# MODEL – Cross-Attention
 # ----------------------------------------------------------------------
-class NoiseAwareFusion(nn.Module):
-    def __init__(self, embedding_dim=192, num_heads=4, dropout=0.1, noise_bottleneck_dim=128):
+class CrossAttentionFusion(nn.Module):
+    def __init__(self, embedding_dim=192, num_heads=4, dropout=0.1):
         super().__init__()
         assert embedding_dim % num_heads == 0
-        self.embedding_dim = embedding_dim
+        self.num_heads = num_heads
+        self.head_dim = embedding_dim // num_heads
 
-        # Shared projection
-        self.proj = nn.Linear(embedding_dim, embedding_dim)
+        self.q_proj = nn.Linear(embedding_dim, embedding_dim)
+        self.k_proj = nn.Linear(embedding_dim, embedding_dim)
+        self.v_proj = nn.Linear(embedding_dim, embedding_dim)
+        self.out_proj = nn.Linear(embedding_dim, embedding_dim)
 
-        # Estimate noise-related information
-        self.noise_extractor = nn.Sequential(
-            nn.Linear(embedding_dim * 2, noise_bottleneck_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(noise_bottleneck_dim, embedding_dim),
-        )
-
-        # Attention
-        self.cross_attn = nn.MultiheadAttention(
-            embed_dim=embedding_dim,
-            num_heads=num_heads,
-            dropout=dropout,
-            batch_first=True,
-        )
-
-        # Noise gate
-        self.noise_gate = nn.Sequential(
-            nn.Linear(embedding_dim, embedding_dim // 4),
-            nn.ReLU(),
-            nn.Linear(embedding_dim // 4, embedding_dim),
-            nn.Sigmoid(),
-        )
-
-        # Transformer-style blocks
         self.norm1 = nn.LayerNorm(embedding_dim)
         self.norm2 = nn.LayerNorm(embedding_dim)
 
@@ -116,31 +99,29 @@ class NoiseAwareFusion(nn.Module):
             nn.Dropout(dropout),
         )
 
-        self.out_proj = nn.Linear(embedding_dim, embedding_dim)
-
-        self.alpha = nn.Parameter(torch.tensor(0.1))
+        self.fc_out = nn.Linear(embedding_dim, embedding_dim)
 
     def forward(self, noisy_emb, enhanced_emb):
-        noisy_emb = F.normalize(noisy_emb, p=2, dim=-1)
-        enhanced_emb = F.normalize(enhanced_emb, p=2, dim=-1)
-        n = self.proj(noisy_emb)
-        e = self.proj(enhanced_emb)
-        noise_est = self.noise_extractor(torch.cat([noisy_emb, enhanced_emb], dim=-1))
-        x = torch.stack([n, e, noise_est], dim=1)  # Shape: B x 3 x D
+        B, D = noisy_emb.shape
+        Q = self.q_proj(noisy_emb)
+        K = self.k_proj(enhanced_emb)
+        V = self.v_proj(enhanced_emb)
 
-        attn_out, attn_weights = self.cross_attn(x, x, x, need_weights=True)
-        x = self.norm1(x + attn_out)
-        token_importance = attn_weights.mean(dim=1)
-        pooled = (x * token_importance.unsqueeze(-1)).sum(dim=1)
-        gate = self.noise_gate(noise_est)
-        pooled = gate * pooled + (1.0 - gate) * x.mean(dim=1)
-        mlp_out = self.mlp(pooled)
-        out = self.norm2(pooled + mlp_out)
-        correction = self.out_proj(out)
-        fused = noisy_emb + self.alpha * correction
-        fused = F.normalize(fused, p=2, dim=-1)
+        Q = Q.view(B, self.num_heads, self.head_dim)
+        K = K.view(B, self.num_heads, self.head_dim)
+        V = V.view(B, self.num_heads, self.head_dim)
 
-        return fused, noise_est
+        attn_weights = torch.matmul(Q, K.transpose(-2, -1)) / (self.head_dim**0.5)
+        attn_weights = F.softmax(attn_weights, dim=-1)
+        attn_out = torch.matmul(attn_weights, V)
+        attn_out = attn_out.contiguous().view(B, D)
+        attn_out = self.out_proj(attn_out)
+
+        x = self.norm1(noisy_emb + attn_out)
+        mlp_out = self.mlp(x)
+        out = self.norm2(x + mlp_out)
+        fused = self.fc_out(out)
+        return F.normalize(fused, p=2, dim=-1)
 
 
 # ----------------------------------------------------------------------
@@ -148,8 +129,8 @@ class NoiseAwareFusion(nn.Module):
 # ----------------------------------------------------------------------
 _MODEL_REGISTRY = {
     "mlp": MLP,
+    "self_attention": SelfAttentionFusion,
     "cross_attention": CrossAttentionFusion,
-    "noise_aware": NoiseAwareFusion,
 }
 
 
