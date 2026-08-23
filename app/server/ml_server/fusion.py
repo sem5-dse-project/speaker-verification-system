@@ -31,14 +31,14 @@ class MLP(nn.Module):
 
 
 # ----------------------------------------------------------------------
-# 2. CrossAttentionFusion (your original cross‑attention gate)
+# 2. SelfAttentionFusion (your original self‑attention gate)
 # ----------------------------------------------------------------------
-class CrossAttentionFusion(nn.Module):
+class SelfAttentionFusion(nn.Module):
     def __init__(self, embedding_dim: int = 192, num_heads: int = 4, dropout: float = 0.1):
         super().__init__()
         assert embedding_dim % num_heads == 0
         self.proj = nn.Linear(embedding_dim, embedding_dim)
-        self.cross_attn = nn.MultiheadAttention(
+        self.self_attn = nn.MultiheadAttention(
             embed_dim=embedding_dim,
             num_heads=num_heads,
             dropout=dropout,
@@ -59,7 +59,7 @@ class CrossAttentionFusion(nn.Module):
         n = self.proj(noisy_emb)
         e = self.proj(enhanced_emb)
         x = torch.stack([n, e], dim=1)
-        attn_out, _ = self.cross_attn(x, x, x)
+        attn_out, _ = self.self_attn(x, x, x)
         x = self.norm1(x + attn_out)
         pooled = x.mean(dim=1)
         mlp_out = self.mlp(pooled)
