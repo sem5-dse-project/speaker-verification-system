@@ -5,7 +5,12 @@ from __future__ import annotations
 import numpy as np
 
 from voice_auth.common.audio import ensure_mono
-from voice_auth.common.types import DEFAULT_QUALITY_DIM, DEFAULT_SAMPLE_RATE, QualityVector, Waveform
+from voice_auth.common.types import (
+    DEFAULT_QUALITY_DIM,
+    DEFAULT_SAMPLE_RATE,
+    QualityVector,
+    Waveform,
+)
 
 
 class BasicQualityEstimator:

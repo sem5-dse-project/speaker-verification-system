@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from ml_server.anti_spoof import score_anti_spoof
 from ml_server.audio import extract_speech_audio, has_sufficient_speech, load_audio_bytes
 from ml_server.config import (
+    ALLOWED_ORIGINS,
     DEFAULT_THRESHOLD,
     DEVICE,
     ECAPA_SOURCE,
@@ -94,7 +95,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )

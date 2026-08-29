@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from voice_auth.common.audio import (
     ensure_mono,
     l2_normalize,
+    load_audio,
     preprocess_audio,
     resample_placeholder,
     to_float32,
@@ -55,3 +58,21 @@ def test_l2_normalize_unit_norm() -> None:
     vec = np.array([3.0, 4.0], dtype=np.float32)
     out = l2_normalize(vec)
     assert pytest.approx(1.0, rel=1e-5) == float(np.linalg.norm(out))
+
+
+def test_load_audio_missing_file_raises() -> None:
+    with pytest.raises(FileNotFoundError):
+        load_audio(Path("/nonexistent/path/audio.wav"))
+
+
+def test_load_audio_reads_and_resamples(tmp_path: Path) -> None:
+    sf = pytest.importorskip("soundfile")
+
+    wav_path = tmp_path / "sample.wav"
+    tone = np.sin(np.linspace(0, 2 * np.pi * 440, 8000)).astype(np.float32)
+    sf.write(str(wav_path), tone, 8000)
+
+    wave, sr = load_audio(wav_path, target_sr=16000)
+    assert sr == 16000
+    assert wave.shape == (1, 16000)
+    assert wave.dtype == np.float32

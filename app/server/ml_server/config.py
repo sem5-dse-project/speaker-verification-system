@@ -35,6 +35,11 @@ MIN_SPEECH_RMS = float(os.getenv("MIN_SPEECH_RMS", "0.01"))
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8000"))
 DEVICE = os.getenv("DEVICE", "cpu")  # cpu | cuda
+# Comma-separated list of allowed CORS origins (defaults to local dev frontend/backend only)
+_raw_allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5000"
+)
+ALLOWED_ORIGINS = [origin.strip() for origin in _raw_allowed_origins.split(",") if origin.strip()]
 ECAPA_SOURCE = os.getenv("ECAPA_SOURCE", "speechbrain/spkrec-ecapa-voxceleb")
 ECAPA_SAVEDIR = Path(
     os.getenv(

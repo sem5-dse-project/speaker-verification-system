@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Sequence
+from collections.abc import Sequence
 
 from voice_auth.common.metrics import compute_eer, far_frr
 from voice_auth.speaker_verification.scoring import cosine_similarity
@@ -67,6 +67,5 @@ def score_embedding_pairs(
     if len(enroll_embeddings) != len(test_embeddings):
         raise ValueError("enroll_embeddings and test_embeddings length mismatch")
     return [
-        cosine_similarity(e, t)
-        for e, t in zip(enroll_embeddings, test_embeddings, strict=True)
+        cosine_similarity(e, t) for e, t in zip(enroll_embeddings, test_embeddings, strict=True)
     ]
