@@ -2,5 +2,7 @@ node_modules/
 .env
 uploads/enrollments/**
 uploads/verifications/**
+uploads/collection/**
 !uploads/enrollments/.gitkeep
 !uploads/verifications/.gitkeep
+!uploads/collection/.gitkeep
