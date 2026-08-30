@@ -70,6 +70,7 @@ describe('authController', () => {
         id: 3,
         username: 'bob',
         password: 'hashed',
+        role: 'user',
       })
       bcrypt.compare.mockResolvedValue(true)
       jwt.sign.mockReturnValue('jwt-token')
@@ -84,7 +85,7 @@ describe('authController', () => {
         expect.objectContaining({
           success: true,
           token: 'jwt-token',
-          user: { id: 3, username: 'bob' },
+          user: { id: 3, username: 'bob', role: 'user' },
         }),
       )
     })
