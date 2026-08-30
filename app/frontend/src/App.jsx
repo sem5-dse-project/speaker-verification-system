@@ -1,6 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import AdminRoute from './components/AdminRoute.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import { useAuth } from './context/AuthContext.jsx'
+import AdminDashboard from './pages/AdminDashboard.jsx'
+import AdminLogin from './pages/AdminLogin.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Enrollment from './pages/Enrollment.jsx'
 import Login from './pages/Login.jsx'
@@ -14,6 +17,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/voice-login" element={<VoiceLogin />} />
       <Route path="/register" element={<Register />} />
 
@@ -39,6 +43,15 @@ function App() {
           <ProtectedRoute>
             <Verification />
           </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
         }
       />
 
