@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Download, LogOut, Mic, ShieldPlus, UploadCloud } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
+import SentenceCard from '../components/SentenceCard.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import api from '../services/api.js'
+import {
+  COLLECTION_PHRASES,
+  pickCollectionPhrase,
+  phrasesFromSamples,
+} from '../utils/collectionPhrases.js'
 
 const INITIAL_FORM = {
   speaker_id: '',
@@ -31,9 +37,13 @@ function AdminDashboard() {
   const [samples, setSamples] = useState([])
   const [counts, setCounts] = useState([])
   const [admins, setAdmins] = useState([])
+  const [recorderKey, setRecorderKey] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false)
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' })
+
+  const usedPhrases = useMemo(() => phrasesFromSamples(samples), [samples])
+  const phrasesRemaining = COLLECTION_PHRASES.length - usedPhrases.size
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -55,6 +65,39 @@ function AdminDashboard() {
   useEffect(() => {
     loadDashboard()
   }, [loadDashboard])
+
+  useEffect(() => {
+    if (form.phrase) {
+      return
+    }
+
+    const { phrase, exhausted } = pickCollectionPhrase(usedPhrases)
+    if (exhausted) {
+      setStatusMessage({
+        type: 'error',
+        text: 'All collection phrases have been used. Export data before collecting more.',
+      })
+      return
+    }
+
+    setForm((previous) => ({ ...previous, phrase }))
+  }, [form.phrase, usedPhrases])
+
+  const handleGeneratePhrase = () => {
+    const { phrase, exhausted } = pickCollectionPhrase(usedPhrases, form.phrase)
+    if (exhausted) {
+      setStatusMessage({
+        type: 'error',
+        text: 'No unused phrases left. Export or archive samples before generating another.',
+      })
+      return
+    }
+
+    setForm((previous) => ({ ...previous, phrase }))
+    setRecording(null)
+    setRecorderKey((key) => key + 1)
+    setStatusMessage({ type: '', text: '' })
+  }
 
   const handleLogout = () => {
     logout()
@@ -87,6 +130,14 @@ function AdminDashboard() {
       return
     }
 
+    if (!form.phrase.trim()) {
+      setStatusMessage({
+        type: 'error',
+        text: 'No phrase assigned. Generate a new sentence before recording.',
+      })
+      return
+    }
+
     setIsUploading(true)
     setStatusMessage({ type: '', text: '' })
 
@@ -114,6 +165,7 @@ function AdminDashboard() {
         }`,
       })
       setRecording(null)
+      setRecorderKey((key) => key + 1)
       setForm((previous) => ({
         ...INITIAL_FORM,
         speaker_id: previous.speaker_id,
@@ -221,6 +273,19 @@ function AdminDashboard() {
           <div className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <h2 className="text-xl font-semibold text-slate-900">Collect Sample</h2>
 
+            <p className="text-sm text-slate-600">
+              {phrasesRemaining} of {COLLECTION_PHRASES.length} phrases still available (longer than
+              enrollment sentences; each phrase is used once).
+            </p>
+
+            {form.phrase ? (
+              <SentenceCard sentence={form.phrase} onGenerateSentence={handleGeneratePhrase} />
+            ) : (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                All phrases have been collected. Export CSV and archive samples to start a new batch.
+              </p>
+            )}
+
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-sm">
                 <span className="mb-1 block font-medium text-slate-700">Speaker ID</span>
@@ -242,16 +307,6 @@ function AdminDashboard() {
                   <option value="live">Live mic</option>
                   <option value="replay">Phone replay</option>
                 </select>
-              </label>
-
-              <label className="block text-sm sm:col-span-2">
-                <span className="mb-1 block font-medium text-slate-700">Phrase (optional)</span>
-                <input
-                  value={form.phrase}
-                  onChange={handleFormChange('phrase')}
-                  placeholder="Sentence spoken or played back"
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2"
-                />
               </label>
 
               <label className="block text-sm">
@@ -305,6 +360,7 @@ function AdminDashboard() {
             </label>
 
             <Recorder
+              key={recorderKey}
               onRecordingChange={setRecording}
               onRecorderError={(message) =>
                 setStatusMessage(message ? { type: 'error', text: message } : { type: '', text: '' })
@@ -347,6 +403,9 @@ function AdminDashboard() {
                       score {sample.replay_score ?? 'n/a'} · {sample.replay_decision ?? 'n/a'} ·{' '}
                       {sample.created_at}
                     </p>
+                    {sample.phrase && (
+                      <p className="mt-1 line-clamp-2 text-xs text-slate-600">{sample.phrase}</p>
+                    )}
                   </div>
                 ))}
               </div>
