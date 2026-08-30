@@ -6,9 +6,11 @@ const path = require('path')
 dotenv.config()
 
 const { pool, initSchema } = require('./config/db')
+const { seedDefaultAdmin } = require('./config/seed')
 const authRoutes = require('./routes/authRoutes')
 const userRoutes = require('./routes/userRoutes')
 const voiceRoutes = require('./routes/voiceRoutes')
+const adminRoutes = require('./routes/adminRoutes')
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -51,6 +53,7 @@ app.get('/api/health/db', async (_req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/voice', voiceRoutes)
+app.use('/api/admin', adminRoutes)
 
 app.use((error, _req, res, _next) => {
   if (error && error.message === 'Only WAV audio files are allowed') {
@@ -71,6 +74,7 @@ const startServer = async () => {
   try {
     await pool.query('SELECT 1')
     await initSchema()
+    await seedDefaultAdmin()
 
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`)

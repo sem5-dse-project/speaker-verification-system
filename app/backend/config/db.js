@@ -1,5 +1,20 @@
 const mysql = require('mysql2/promise')
 
+const ensureColumn = async (table, column, definitionSql) => {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS cnt
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?
+       AND COLUMN_NAME = ?`,
+    [table, column],
+  )
+
+  if (Number(rows[0]?.cnt || 0) === 0) {
+    await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN ${definitionSql}`)
+  }
+}
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -68,6 +83,35 @@ const initSchema = async () => {
         FOREIGN KEY (voice_sample_id)
         REFERENCES voice_samples(id)
         ON DELETE SET NULL
+    )
+  `)
+
+  await ensureColumn(
+    'users',
+    'role',
+    "role ENUM('user', 'admin') NOT NULL DEFAULT 'user' AFTER password",
+  )
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS collection_samples (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      admin_id INT NOT NULL,
+      speaker_id VARCHAR(64) NOT NULL,
+      label ENUM('live', 'replay') NOT NULL,
+      file_path VARCHAR(512) NOT NULL,
+      phrase VARCHAR(255) NULL,
+      phone_model VARCHAR(128) NULL,
+      distance VARCHAR(64) NULL,
+      volume VARCHAR(64) NULL,
+      notes TEXT NULL,
+      consent TINYINT(1) NOT NULL DEFAULT 1,
+      replay_score FLOAT NULL,
+      replay_decision VARCHAR(32) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_collection_samples_admin
+        FOREIGN KEY (admin_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
     )
   `)
 }
