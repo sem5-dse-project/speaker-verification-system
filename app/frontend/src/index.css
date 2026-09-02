@@ -52,15 +52,15 @@
 
 @layer components {
   .page-auth {
-    @apply relative min-h-[100dvh] overflow-x-hidden overflow-y-auto bg-gradient-to-br from-brand-50 via-emerald-50/40 to-teal-100/30 px-[max(1rem,env(safe-area-inset-left))] py-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] dark:from-surface-950 dark:via-surface-900 dark:to-brand-950/30 sm:px-6 sm:py-6 lg:px-8 lg:py-8;
+    @apply relative flex min-h-[100dvh] flex-col overflow-x-hidden overflow-y-auto bg-gradient-to-br from-brand-50 via-emerald-50/40 to-teal-100/30 px-[max(1rem,env(safe-area-inset-left))] py-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] dark:from-surface-950 dark:via-surface-900 dark:to-brand-950/30 sm:px-6 sm:py-6 lg:px-8 lg:py-8;
   }
 
   .page-app {
-    @apply relative min-h-[100dvh] overflow-x-hidden bg-gradient-to-b from-brand-50 via-white to-emerald-50/30 px-[max(1rem,env(safe-area-inset-left))] py-6 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] dark:from-surface-950 dark:via-surface-900 dark:to-brand-950/25 sm:px-6 sm:py-10 lg:px-8;
+    @apply relative flex min-h-[100dvh] flex-col overflow-x-hidden bg-gradient-to-b from-brand-50 via-white to-emerald-50/30 px-[max(1rem,env(safe-area-inset-left))] py-6 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] dark:from-surface-950 dark:via-surface-900 dark:to-brand-950/25 sm:px-6 sm:py-10 lg:px-8;
   }
 
   .page-admin {
-    @apply relative min-h-[100dvh] overflow-x-hidden bg-gradient-to-b from-brand-50 via-white to-teal-50/40 px-[max(1rem,env(safe-area-inset-left))] py-6 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] dark:from-surface-950 dark:via-surface-900 dark:to-brand-950/25 sm:px-6 sm:py-8 lg:px-8;
+    @apply relative flex min-h-[100dvh] flex-col overflow-x-hidden bg-gradient-to-b from-brand-50 via-white to-teal-50/40 px-[max(1rem,env(safe-area-inset-left))] py-6 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] dark:from-surface-950 dark:via-surface-900 dark:to-brand-950/25 sm:px-6 sm:py-8 lg:px-8;
   }
 
   .page-content {
@@ -333,5 +333,41 @@
 
   .tip-chip {
     @apply rounded-xl border border-brand-100 bg-brand-50/70 px-3 py-2.5 text-xs text-brand-900 dark:border-brand-900/25 dark:bg-brand-950/20 dark:text-brand-100;
+  }
+
+  .app-footer {
+    @apply relative z-10 mt-auto border-t border-brand-100/80 bg-white/70 backdrop-blur-sm dark:border-brand-900/30 dark:bg-surface-950/70;
+  }
+
+  .app-footer-with-nav {
+    @apply pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0;
+  }
+
+  .app-footer-inner {
+    @apply mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8;
+  }
+
+  .app-footer-inner-compact {
+    @apply max-w-4xl gap-0 py-5 sm:py-6;
+  }
+
+  .app-footer-auth {
+    @apply mt-8 bg-brand-50/50 dark:bg-surface-950/50;
+  }
+
+  .app-footer-admin {
+    @apply mt-8;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center rounded-2xl border border-dashed border-brand-200 bg-brand-50/40 px-6 py-8 text-center dark:border-brand-900/30 dark:bg-brand-950/15;
+  }
+
+  .empty-state-icon {
+    @apply mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-brand-100 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300;
+  }
+
+  .skeleton-block {
+    @apply animate-pulse rounded-lg bg-brand-100/80 dark:bg-surface-800/80;
   }
 }

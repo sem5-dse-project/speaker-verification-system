@@ -12,6 +12,8 @@ import {
 import PageShell from '../components/PageShell.jsx'
 import FeatureTile from '../components/FeatureTile.jsx'
 import ProgressRing from '../components/ProgressRing.jsx'
+import EmptyState from '../components/EmptyState.jsx'
+import { DashboardSkeleton } from '../components/DashboardSkeleton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import api from '../services/api.js'
 
@@ -90,6 +92,9 @@ function Dashboard() {
 
   return (
     <PageShell narrow showNav>
+      {loading ? (
+        <DashboardSkeleton />
+      ) : (
       <div className="space-y-5 sm:space-y-6">
         <header className="space-y-1">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-400">
@@ -189,15 +194,17 @@ function Dashboard() {
             )}
           </div>
 
-          {loading && <p className="text-sm text-subtle">Loading activity...</p>}
-
           {!loading && verificationLogs.length === 0 && (
-            <div className="rounded-xl border border-dashed border-brand-200 bg-brand-50/40 px-4 py-6 text-center dark:border-brand-900/30 dark:bg-brand-950/15">
-              <p className="text-sm font-semibold text-body">No verification attempts yet</p>
-              <p className="mt-1 text-sm text-muted">
-                Complete enrollment first, then run your first voice check.
-              </p>
-            </div>
+            <EmptyState
+              icon={ShieldCheck}
+              title="No verification attempts yet"
+              description="Complete enrollment first, then run your first voice check to see results here."
+              action={
+                <Link to="/verification" className="btn-primary-lg sm:max-w-xs">
+                  Run verification
+                </Link>
+              }
+            />
           )}
 
           {!loading && verificationLogs.length > 0 && (
@@ -235,6 +242,7 @@ function Dashboard() {
           )}
         </section>
       </div>
+      )}
     </PageShell>
   )
 }

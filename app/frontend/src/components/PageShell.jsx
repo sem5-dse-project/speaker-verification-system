@@ -1,8 +1,16 @@
 import AmbientBackground from './AmbientBackground.jsx'
 import AppNav from './AppNav.jsx'
+import AppFooter from './AppFooter.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
 
-function PageShell({ variant = 'app', children, className = '', narrow = false, showNav = false }) {
+function PageShell({
+  variant = 'app',
+  children,
+  className = '',
+  narrow = false,
+  showNav = false,
+  showFooter = true,
+}) {
   const variantClass =
     variant === 'auth' ? 'page-auth' : variant === 'admin' ? 'page-admin' : 'page-app'
   const contentClass = [
@@ -12,12 +20,12 @@ function PageShell({ variant = 'app', children, className = '', narrow = false, 
     .filter(Boolean)
     .join(' ')
 
-  const showAmbient = variant !== 'auth'
+  const footerVariant = variant === 'auth' ? 'auth' : variant === 'admin' ? 'admin' : 'app'
   const showFloatingTheme = !showNav
 
   return (
     <main className={`${variantClass} ${className}`.trim()}>
-      {showAmbient && <AmbientBackground />}
+      <AmbientBackground />
 
       {showNav && <AppNav />}
 
@@ -27,7 +35,9 @@ function PageShell({ variant = 'app', children, className = '', narrow = false, 
         </div>
       )}
 
-      <div className={contentClass}>{children}</div>
+      <div className={`${contentClass} flex-1`}>{children}</div>
+
+      {showFooter && <AppFooter variant={footerVariant} withBottomNav={showNav} />}
     </main>
   )
 }
