@@ -115,16 +115,12 @@ function AdminLogin() {
                 type="checkbox"
                 checked={form.rememberMe}
                 onChange={handleFieldChange('rememberMe')}
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 dark:border-slate-600 dark:bg-slate-800"
+                className="checkbox-brand"
               />
               Remember Me
             </label>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200/60 transition hover:bg-indigo-500 disabled:bg-indigo-400 dark:shadow-indigo-950/30"
-            >
+            <button type="submit" disabled={isSubmitting} className="btn-primary-lg">
               {isSubmitting ? 'Signing In...' : 'Sign In as Admin'}
             </button>
 
@@ -132,7 +128,7 @@ function AdminLogin() {
               Back to User Login
             </Link>
 
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2.5 text-sm text-indigo-900 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-200">
+            <div className="alert-info">
               <p className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" />
                 Default seed account: admin1 / admin1234 (change after first login).

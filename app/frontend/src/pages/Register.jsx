@@ -136,7 +136,7 @@ function Register() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((previous) => !previous)}
-                  className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                  className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-brand-50 hover:text-brand-800 focus-ring dark:text-slate-400 dark:hover:bg-brand-900/40 dark:hover:text-brand-200"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -164,11 +164,7 @@ function Register() {
               ))}
             </ul>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="mt-1 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200/60 transition-all duration-200 hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-1 dark:shadow-blue-950/30"
-            >
+            <button type="submit" disabled={isSubmitting} className="btn-primary-lg">
               {isSubmitting ? 'Creating Account...' : 'Create Account'}
             </button>
 

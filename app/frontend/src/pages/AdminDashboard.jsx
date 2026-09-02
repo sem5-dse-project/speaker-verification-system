@@ -263,7 +263,7 @@ function AdminDashboard() {
           </div>
           <div className="card p-5">
             <p className="text-sm text-subtle">Admins</p>
-            <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{admins.length}</p>
+            <p className="text-3xl font-bold text-brand-600 dark:text-brand-400">{admins.length}</p>
           </div>
         </section>
 
@@ -352,7 +352,7 @@ function AdminDashboard() {
                 type="checkbox"
                 checked={form.consent}
                 onChange={handleFormChange('consent')}
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 dark:border-slate-600 dark:bg-slate-800"
+                className="mt-1 checkbox-brand"
               />
               Speaker consented to use this recording for research and model improvement.
             </label>

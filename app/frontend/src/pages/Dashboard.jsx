@@ -35,14 +35,14 @@ function Dashboard() {
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
             to="/enrollment"
-            className="rounded-xl bg-blue-600 px-4 py-3 text-center font-semibold text-white transition hover:bg-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600"
+            className="rounded-xl bg-brand-600 px-4 py-3 text-center font-semibold text-white transition hover:bg-brand-500 dark:bg-brand-700 dark:hover:bg-brand-600"
           >
             Voice Enrollment
           </Link>
 
           <Link
             to="/verification"
-            className="rounded-xl bg-slate-700 px-4 py-3 text-center font-semibold text-white transition hover:bg-slate-600 dark:bg-slate-600 dark:hover:bg-slate-500"
+            className="rounded-xl bg-brand-800 px-4 py-3 text-center font-semibold text-white transition hover:bg-brand-700 dark:bg-brand-900 dark:hover:bg-brand-800"
           >
             Voice Verification
           </Link>

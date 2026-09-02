@@ -112,7 +112,6 @@ function Recorder({ onRecordingChange, onRecorderError }) {
 
       const audioContext = new AudioCtx()
       const source = audioContext.createMediaStreamSource(stream)
-      // ScriptProcessor is deprecated but widely supported for PCM capture.
       const processor = audioContext.createScriptProcessor(4096, 1, 1)
 
       pcmChunksRef.current = []
@@ -128,7 +127,6 @@ function Recorder({ onRecordingChange, onRecorderError }) {
       }
 
       source.connect(processor)
-      // Keep the graph alive; mute output to avoid feedback.
       const gain = audioContext.createGain()
       gain.gain.value = 0
       processor.connect(gain)
@@ -215,22 +213,18 @@ function Recorder({ onRecordingChange, onRecorderError }) {
 
   return (
     <section className="card flex flex-col items-center gap-6 p-6 text-center sm:p-8">
-      <div className="relative grid h-28 w-28 place-items-center rounded-full bg-blue-50 ring-2 ring-blue-200 dark:bg-blue-950/40 dark:ring-blue-900/50">
+      <div className="relative grid h-28 w-28 place-items-center rounded-full bg-brand-50 ring-2 ring-brand-200 dark:bg-brand-950/50 dark:ring-brand-800/60">
         {status === 'recording' && (
-          <span className="absolute h-full w-full animate-ping rounded-full bg-blue-300/40 dark:bg-blue-500/30" />
+          <span className="absolute h-full w-full animate-ping rounded-full bg-brand-300/40 dark:bg-brand-500/30" />
         )}
-        <Mic className="relative h-12 w-12 text-blue-600 dark:text-blue-400" />
+        <Mic className="relative h-12 w-12 text-brand-600 dark:text-brand-400" />
       </div>
 
       <StatusBadge status={status} />
       <p className="text-3xl font-bold tabular-nums text-slate-900 dark:text-slate-100">{formatSeconds(seconds)}</p>
 
       <div className="flex flex-wrap justify-center gap-3">
-        <PrimaryButton
-          type="button"
-          onClick={handleStartRecording}
-          disabled={status === 'recording'}
-        >
+        <PrimaryButton type="button" onClick={handleStartRecording} disabled={status === 'recording'}>
           <Mic className="mr-2 h-4 w-4" />
           Start Recording
         </PrimaryButton>
@@ -239,7 +233,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
           type="button"
           onClick={handleStopRecording}
           disabled={status !== 'recording'}
-          className="bg-slate-700 shadow-slate-200 hover:bg-slate-600"
+          className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 dark:bg-brand-900 dark:hover:bg-brand-800"
         >
           <PauseCircle className="mr-2 h-4 w-4" />
           Stop Recording
@@ -249,7 +243,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
           type="button"
           onClick={handlePlayRecording}
           disabled={!hasRecording || status === 'recording'}
-          className="bg-slate-700 shadow-slate-200 hover:bg-slate-600"
+          className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 dark:bg-brand-900 dark:hover:bg-brand-800"
         >
           <PlayCircle className="mr-2 h-4 w-4" />
           Play Recording
@@ -259,7 +253,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
           type="button"
           onClick={handleDeleteRecording}
           disabled={!hasRecording || status === 'recording'}
-          className="bg-slate-700 shadow-slate-200 hover:bg-slate-600"
+          className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 dark:bg-brand-900 dark:hover:bg-brand-800"
         >
           <Trash2 className="mr-2 h-4 w-4" />
           Delete Recording

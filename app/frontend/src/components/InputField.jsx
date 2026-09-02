@@ -20,10 +20,10 @@ function InputField({
 
       <div
         className={[
-          'group relative flex items-center rounded-xl border bg-white transition-all duration-200 dark:bg-slate-800',
+          'group relative flex items-center rounded-xl border bg-white transition-all duration-200 dark:bg-teal-950/80',
           hasError
             ? 'border-rose-300 ring-2 ring-rose-100 dark:border-rose-700 dark:ring-rose-950/40'
-            : 'border-slate-200 hover:border-slate-300 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 dark:border-slate-600 dark:hover:border-slate-500 dark:focus-within:border-blue-500 dark:focus-within:ring-blue-950/40',
+            : 'border-brand-200 hover:border-brand-300 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100 dark:border-brand-800 dark:hover:border-brand-700 dark:focus-within:border-brand-500 dark:focus-within:ring-brand-950/40',
         ].join(' ')}
       >
         {Icon && (
@@ -33,7 +33,7 @@ function InputField({
               'pointer-events-none ml-3 h-4 w-4 transition-colors duration-200',
               hasError
                 ? 'text-rose-400'
-                : 'text-slate-400 group-focus-within:text-blue-500 dark:text-slate-500 dark:group-focus-within:text-blue-400',
+                : 'text-slate-400 group-focus-within:text-brand-600 dark:text-slate-500 dark:group-focus-within:text-brand-400',
             ].join(' ')}
           />
         )}

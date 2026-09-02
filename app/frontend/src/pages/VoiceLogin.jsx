@@ -154,7 +154,7 @@ function VoiceLogin() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(event) => setRememberMe(event.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-300 dark:border-slate-600 dark:bg-slate-800"
+                  className="checkbox-brand"
                 />
                 Remember Me
               </label>
