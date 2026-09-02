@@ -212,19 +212,24 @@ function Recorder({ onRecordingChange, onRecorderError }) {
   }
 
   return (
-    <section className="card flex flex-col items-center gap-6 p-6 text-center sm:p-8">
-      <div className="relative grid h-28 w-28 place-items-center rounded-full bg-brand-50 ring-2 ring-brand-200 dark:bg-surface-800 dark:ring-brand-900/35">
+    <section className="card flex flex-col items-center gap-5 p-4 text-center sm:gap-6 sm:p-8">
+      <div className="relative grid h-24 w-24 place-items-center rounded-full bg-brand-50 ring-2 ring-brand-200 sm:h-28 sm:w-28 dark:bg-surface-800 dark:ring-brand-900/35">
         {status === 'recording' && (
           <span className="absolute h-full w-full animate-ping rounded-full bg-brand-300/40 dark:bg-brand-500/30" />
         )}
-        <Mic className="relative h-12 w-12 text-brand-600 dark:text-brand-400" />
+        <Mic className="relative h-10 w-10 text-brand-600 sm:h-12 sm:w-12 dark:text-brand-400" />
       </div>
 
       <StatusBadge status={status} />
-      <p className="text-3xl font-bold tabular-nums text-slate-900 dark:text-slate-100">{formatSeconds(seconds)}</p>
+      <p className="text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl dark:text-slate-100">{formatSeconds(seconds)}</p>
 
-      <div className="flex flex-wrap justify-center gap-3">
-        <PrimaryButton type="button" onClick={handleStartRecording} disabled={status === 'recording'}>
+      <div className="grid w-full max-w-md grid-cols-1 gap-2 sm:max-w-none sm:flex sm:flex-wrap sm:justify-center sm:gap-3">
+        <PrimaryButton
+          type="button"
+          onClick={handleStartRecording}
+          disabled={status === 'recording'}
+          className="sm:w-auto"
+        >
           <Mic className="mr-2 h-4 w-4" />
           Start Recording
         </PrimaryButton>
@@ -233,7 +238,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
           type="button"
           onClick={handleStopRecording}
           disabled={status !== 'recording'}
-          className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 dark:bg-brand-900 dark:hover:bg-brand-800"
+          className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 sm:w-auto dark:bg-brand-900 dark:hover:bg-brand-800"
         >
           <PauseCircle className="mr-2 h-4 w-4" />
           Stop Recording
@@ -243,7 +248,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
           type="button"
           onClick={handlePlayRecording}
           disabled={!hasRecording || status === 'recording'}
-          className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 dark:bg-brand-900 dark:hover:bg-brand-800"
+          className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 sm:w-auto dark:bg-brand-900 dark:hover:bg-brand-800"
         >
           <PlayCircle className="mr-2 h-4 w-4" />
           Play Recording
@@ -253,7 +258,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
           type="button"
           onClick={handleDeleteRecording}
           disabled={!hasRecording || status === 'recording'}
-          className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 dark:bg-brand-900 dark:hover:bg-brand-800"
+          className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 sm:w-auto dark:bg-brand-900 dark:hover:bg-brand-800"
         >
           <Trash2 className="mr-2 h-4 w-4" />
           Delete Recording

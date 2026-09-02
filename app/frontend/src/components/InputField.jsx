@@ -44,7 +44,7 @@ function InputField({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="w-full rounded-xl bg-transparent px-3 py-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+          className="w-full rounded-xl bg-transparent px-3 py-3.5 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none sm:text-sm dark:text-slate-100 dark:placeholder:text-slate-500"
           aria-invalid={hasError}
           aria-describedby={helperText ? `${id}-hint` : undefined}
         />

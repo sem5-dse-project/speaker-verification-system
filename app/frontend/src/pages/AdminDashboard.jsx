@@ -229,22 +229,22 @@ function AdminDashboard() {
 
   return (
     <PageShell variant="admin">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header className="card flex flex-wrap items-center justify-between gap-3 p-6">
-          <div>
-            <h1 className="heading-1 text-3xl">Admin Data Collection</h1>
-            <p className="mt-1 text-muted">
+      <div className="space-y-5 sm:space-y-6">
+        <header className="card flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="heading-1">Admin Data Collection</h1>
+            <p className="mt-1 text-sm text-muted sm:text-base">
               Signed in as {user?.username}. Collect live vs phone-replay WAVs for model fine-tuning.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/dashboard" className="btn-secondary px-4 py-2 font-semibold">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Link to="/dashboard" className="btn-secondary justify-center px-4 py-2.5 font-semibold">
               User Dashboard
             </Link>
             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 dark:bg-rose-700 dark:hover:bg-rose-600"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-500 sm:w-auto dark:bg-rose-700 dark:hover:bg-rose-600"
             >
               <LogOut className="h-4 w-4" />
               Logout
@@ -252,23 +252,23 @@ function AdminDashboard() {
           </div>
         </header>
 
-        <section className="grid gap-4 sm:grid-cols-3">
-          <div className="card p-5">
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+          <div className="card">
             <p className="text-sm text-subtle">Live samples</p>
-            <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{liveCount}</p>
+            <p className="text-2xl font-bold text-emerald-600 sm:text-3xl dark:text-emerald-400">{liveCount}</p>
           </div>
-          <div className="card p-5">
+          <div className="card">
             <p className="text-sm text-subtle">Replay samples</p>
-            <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{replayCount}</p>
+            <p className="text-2xl font-bold text-amber-600 sm:text-3xl dark:text-amber-400">{replayCount}</p>
           </div>
-          <div className="card p-5">
+          <div className="card">
             <p className="text-sm text-subtle">Admins</p>
-            <p className="text-3xl font-bold text-brand-600 dark:text-brand-400">{admins.length}</p>
+            <p className="text-2xl font-bold text-brand-600 sm:text-3xl dark:text-brand-400">{admins.length}</p>
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="card space-y-4 p-6">
+        <section className="grid gap-5 sm:gap-6 lg:grid-cols-2">
+          <div className="card space-y-4">
             <h2 className="heading-2">Collect Sample</h2>
 
             <p className="text-sm text-muted">
@@ -347,7 +347,7 @@ function AdminDashboard() {
               </label>
             </div>
 
-            <label className="flex items-start gap-2 text-sm text-body">
+            <label className="flex min-h-11 items-start gap-2.5 text-sm text-body">
               <input
                 type="checkbox"
                 checked={form.consent}
@@ -371,11 +371,15 @@ function AdminDashboard() {
             </PrimaryButton>
           </div>
 
-          <div className="space-y-6">
-            <div className="card p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="space-y-5 sm:space-y-6">
+            <div className="card">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="heading-2">Recent Samples</h2>
-                <button type="button" onClick={handleExportCsv} className="btn-secondary font-semibold">
+                <button
+                  type="button"
+                  onClick={handleExportCsv}
+                  className="btn-secondary justify-center font-semibold sm:w-auto"
+                >
                   <Download className="h-4 w-4" />
                   Export CSV
                 </button>
@@ -402,7 +406,7 @@ function AdminDashboard() {
               </div>
             </div>
 
-            <div className="card p-6">
+            <div className="card">
               <h2 className="mb-4 flex items-center gap-2 heading-2">
                 <ShieldPlus className="h-5 w-5" />
                 Create Admin

@@ -149,8 +149,8 @@ function Enrollment() {
   }
 
   return (
-    <PageShell>
-      <div className="mx-auto max-w-4xl space-y-6">
+    <PageShell narrow>
+      <div className="space-y-5 sm:space-y-6">
         <div>
           <button type="button" onClick={() => navigate('/dashboard')} className="btn-secondary">
             <ArrowLeft className="h-4 w-4" />
@@ -165,7 +165,7 @@ function Enrollment() {
           </p>
         </header>
 
-        <section className="card p-6 sm:p-8">
+        <section className="card">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-subtle">
             Instructions
           </h2>
@@ -176,20 +176,20 @@ function Enrollment() {
           </p>
         </section>
 
-        <section className="card p-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
+        <section className="card">
+          <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <p className="text-sm font-semibold text-body">{progressLabel}</p>
             <p className="text-sm text-subtle">
               Saved: {sampleCount}/{REQUIRED_SAMPLES}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {Array.from({ length: REQUIRED_SAMPLES }).map((_, index) => {
               const done = index < sampleCount
               return (
                 <div
                   key={`slot-${index}`}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-medium ${slotClassName(done, index === sampleCount)}`}
+                  className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-medium ${slotClassName(done, index === sampleCount)}`}
                 >
                   {done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
                   Sample {index + 1}
@@ -205,13 +205,13 @@ function Enrollment() {
                   key={`saved-${index}`}
                   className="list-item flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-surface-800/70"
                 >
-                  <span className="line-clamp-1">
+                  <span className="line-clamp-2 sm:line-clamp-1">
                     #{index + 1}: {sample.sentence}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleRemoveSample(index)}
-                    className="text-rose-600 hover:underline dark:text-rose-400"
+                    className="min-h-11 shrink-0 px-2 text-rose-600 hover:underline dark:text-rose-400"
                     disabled={isSubmitting}
                   >
                     Remove

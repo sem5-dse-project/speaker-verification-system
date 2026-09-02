@@ -17,33 +17,27 @@ function Dashboard() {
   }
 
   return (
-    <PageShell>
-      <div className="card mx-auto max-w-4xl p-8">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="heading-1 text-3xl">Dashboard</h1>
+    <PageShell narrow>
+      <div className="card sm:p-8">
+        <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <h1 className="heading-1">Dashboard</h1>
           <button
             type="button"
             onClick={handleLogout}
-            className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-500 dark:bg-rose-700 dark:hover:bg-rose-600"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-500 sm:w-auto dark:bg-rose-700 dark:hover:bg-rose-600"
           >
             Logout
           </button>
         </div>
 
-        <p className="mb-6 text-lg text-body">Welcome, {username}</p>
+        <p className="mb-5 text-base text-body sm:mb-6 sm:text-lg">Welcome, {username}</p>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Link
-            to="/enrollment"
-            className="rounded-xl bg-brand-600 px-4 py-3 text-center font-semibold text-white transition hover:bg-brand-500 dark:bg-brand-700 dark:hover:bg-brand-600"
-          >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Link to="/enrollment" className="action-link justify-center">
             Voice Enrollment
           </Link>
 
-          <Link
-            to="/verification"
-            className="rounded-xl bg-brand-800 px-4 py-3 text-center font-semibold text-white transition hover:bg-brand-700 dark:bg-brand-900 dark:hover:bg-brand-800"
-          >
+          <Link to="/verification" className="action-link-muted justify-center">
             Voice Verification
           </Link>
         </div>

@@ -86,8 +86,8 @@ function VoiceLogin() {
   const guessScore = identifyResult?.similarity_score
 
   return (
-    <PageShell>
-      <div className="mx-auto max-w-4xl space-y-6">
+    <PageShell narrow>
+      <div className="space-y-5 sm:space-y-6">
         <div>
           <button type="button" onClick={() => navigate('/login')} className="btn-secondary">
             <ArrowLeft className="h-4 w-4" />

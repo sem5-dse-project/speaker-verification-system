@@ -105,7 +105,7 @@ function Register() {
 
   return (
     <PageShell variant="auth">
-      <div className="mx-auto flex h-full max-w-6xl items-center justify-center">
+      <div className="flex w-full flex-col justify-center py-2 sm:py-4">
         <AuthCard
           title="Create Account"
           subtitle="Create an account to enroll and verify your voice."
@@ -136,7 +136,7 @@ function Register() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((previous) => !previous)}
-                  className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-brand-50 hover:text-brand-800 focus-ring dark:text-slate-400 dark:hover:bg-brand-900/40 dark:hover:text-brand-200"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-slate-500 transition-colors hover:bg-brand-50 hover:text-brand-800 focus-ring dark:text-slate-400 dark:hover:bg-brand-900/40 dark:hover:text-brand-200"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

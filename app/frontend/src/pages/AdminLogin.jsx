@@ -83,7 +83,7 @@ function AdminLogin() {
 
   return (
     <PageShell variant="admin">
-      <div className="mx-auto flex max-w-xl items-center justify-center">
+      <div className="flex w-full flex-col justify-center py-2 sm:py-4">
         <AuthCard
           title="Admin Login"
           subtitle="Sign in to collect live vs replay research audio."
@@ -110,7 +110,7 @@ function AdminLogin() {
               error={errors.password}
             />
 
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
+            <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-muted">
               <input
                 type="checkbox"
                 checked={form.rememberMe}
