@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Mic, ShieldCheck, LogOut, Waves } from 'lucide-react'
+import { LayoutDashboard, Mic, ShieldCheck, LogOut } from 'lucide-react'
+import BrandMark from './BrandMark.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
 
@@ -26,13 +27,8 @@ function AppNav() {
     <>
       <header className="app-nav-top hidden md:block">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <NavLink to="/dashboard" className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#004d40] to-[#00a884] text-white shadow-md shadow-brand-200/40 dark:shadow-brand-950/40">
-              <Waves className="h-4 w-4" />
-            </span>
-            <span className="text-base font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
-              VoiceAuth
-            </span>
+          <NavLink to="/dashboard" className="brand-mark-link">
+            <BrandMark size="md" className="brand-mark-compact" />
           </NavLink>
 
           <nav className="flex items-center gap-1">

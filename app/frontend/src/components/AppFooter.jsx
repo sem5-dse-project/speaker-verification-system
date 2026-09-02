@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { ShieldCheck, Waves } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
+import BrandMark from './BrandMark.jsx'
 
 const CURRENT_YEAR = new Date().getFullYear()
 
@@ -17,17 +18,10 @@ function AppFooter({ variant = 'app', withBottomNav = false }) {
     return (
       <footer className={footerClass}>
         <div className="app-footer-inner">
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#004d40] to-[#00a884] text-white">
-              <Waves className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100">VoiceAuth</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                Biometric voice verification · Replay protected
-              </p>
-            </div>
-          </div>
+          <BrandMark
+            size="md"
+            subtitle="Biometric voice verification · Replay protected"
+          />
 
           <p className="max-w-xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
             Secure speaker enrollment and verification using ECAPA-TDNN embeddings, inverted-Mel replay
@@ -55,7 +49,7 @@ function AppFooter({ variant = 'app', withBottomNav = false }) {
           </div>
 
           <p className="text-xs text-slate-500 dark:text-slate-500">
-            © {CURRENT_YEAR} Speaker Verification System
+            © {CURRENT_YEAR} Voice Authentication
           </p>
         </div>
       </footer>
@@ -65,17 +59,10 @@ function AppFooter({ variant = 'app', withBottomNav = false }) {
   return (
     <footer className={footerClass}>
       <div className="app-footer-inner app-footer-inner-compact">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[#004d40] to-[#00a884] text-white">
-              <Waves className="h-3.5 w-3.5" />
-            </span>
-            <span className="text-sm font-bold text-slate-900 dark:text-slate-100">VoiceAuth</span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            © {CURRENT_YEAR} · Replay-protected speaker verification
-          </p>
-        </div>
+        <BrandMark size="sm" className="brand-mark-compact" />
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          © {CURRENT_YEAR} · Replay-protected speaker verification
+        </p>
         <nav className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold">
           <Link to="/dashboard" className="link-primary">
             Dashboard

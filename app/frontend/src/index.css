@@ -370,4 +370,34 @@
   .skeleton-block {
     @apply animate-pulse rounded-lg bg-brand-100/80 dark:bg-surface-800/80;
   }
+
+  .brand-mark {
+    @apply flex min-w-0 items-center gap-2.5;
+  }
+
+  .brand-mark-compact .brand-mark-title {
+    @apply text-sm sm:text-base;
+  }
+
+  .brand-mark-title {
+    @apply truncate text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100;
+  }
+
+  .brand-mark-title-light,
+  .brand-mark-title-on-dark {
+    @apply text-white;
+  }
+
+  .brand-mark-subtitle {
+    @apply truncate text-xs text-slate-500 dark:text-slate-400;
+  }
+
+  .brand-mark-subtitle-light {
+    @apply text-emerald-100/75;
+  }
+
+  .brand-mark-link {
+    @apply rounded-xl transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300;
+  }
+
 }
