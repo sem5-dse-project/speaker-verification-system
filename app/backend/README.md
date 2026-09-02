@@ -173,6 +173,7 @@ Full request/response docs: see **[API.md](./API.md)**.
 | `GET` | `/api/voice/verification-logs` | Bearer | Verification score history |
 | `GET` | `/api/voice/history` | Bearer | Sample history |
 | `GET` | `/api/health` | No | Health check |
+| `GET` | `/api/health/db` | No | Database health check |
 
 CORS is configured for the Vite frontend at `http://localhost:5173`.
 

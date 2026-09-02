@@ -14,6 +14,15 @@ SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", "16000"))
 MAX_SECONDS = float(os.getenv("MAX_SECONDS", "4.0"))
 # Cosine ACCEPT threshold (raised so silence/noise rarely clears speaker verify)
 DEFAULT_THRESHOLD = float(os.getenv("DEFAULT_THRESHOLD", "0.45"))
+# Silero VAD preprocessing (before replay + ECAPA)
+VAD_ENABLED = os.getenv("VAD_ENABLED", "true").lower() in {"1", "true", "yes"}
+VAD_USE_ONNX = os.getenv("VAD_USE_ONNX", "true").lower() in {"1", "true", "yes"}
+VAD_SPEECH_THRESHOLD = float(os.getenv("VAD_SPEECH_THRESHOLD", "0.50"))
+VAD_MIN_AUDIO_MS = float(os.getenv("VAD_MIN_AUDIO_MS", "250"))
+VAD_MIN_SPEECH_MS = float(os.getenv("VAD_MIN_SPEECH_MS", "120"))
+VAD_MIN_SILENCE_MS = float(os.getenv("VAD_MIN_SILENCE_MS", "120"))
+VAD_SPEECH_PAD_MS = float(os.getenv("VAD_SPEECH_PAD_MS", "30"))
+VAD_MIN_TOTAL_SPEECH_MS = float(os.getenv("VAD_MIN_TOTAL_SPEECH_MS", "300"))
 # Frame-level speech gate — require sustained louder frames (rejects ambient mic)
 # Defaults tuned on laptop verify WAVs that false-ACCEPTed without speech.
 MIN_SPEECH_FRAME_RMS = float(os.getenv("MIN_SPEECH_FRAME_RMS", "0.08"))
@@ -47,9 +56,7 @@ _DEFAULT_REPLAY_CKPT = (
     / "best_inverted_mel_mixed_2017_pa2019.pt"
 )
 REPLAY_ENABLED = os.getenv("REPLAY_ENABLED", "true").lower() in {"1", "true", "yes"}
-REPLAY_CHECKPOINT = Path(
-    os.getenv("REPLAY_CHECKPOINT", str(_DEFAULT_REPLAY_CKPT))
-)
+REPLAY_CHECKPOINT = Path(os.getenv("REPLAY_CHECKPOINT", str(_DEFAULT_REPLAY_CKPT)))
 _raw_replay_thr = os.getenv("REPLAY_THRESHOLD", "").strip()
 REPLAY_THRESHOLD = float(_raw_replay_thr) if _raw_replay_thr else None
 
@@ -72,6 +79,7 @@ _DEFAULT_LA_CKPT = (
     / "lfcc_la"
     / "best_lfcc_la2019.pt"
 )
+
 # Off by default: LFCC-LA is strong on ASVspoof LA but scores ~1.0 on browser-mic
 # speech (domain mismatch), same failure mode as mixed-LFCC replay earlier.
 LA_ENABLED = os.getenv("LA_ENABLED", "false").lower() in {"1", "true", "yes"}
@@ -87,3 +95,13 @@ _raw_la_t_low = os.getenv("LA_T_LOW", "").strip()
 _raw_la_t_high = os.getenv("LA_T_HIGH", "").strip()
 LA_T_LOW = float(_raw_la_t_low) if _raw_la_t_low else None
 LA_T_HIGH = float(_raw_la_t_high) if _raw_la_t_high else None
+
+# Noise Fusion model
+ENHANCEMENT_MODE = os.getenv("ENHANCEMENT_MODE", "webrtc").lower()
+FUSION_ENABLED = os.getenv("FUSION_ENABLED", "false").lower() in {"1", "true", "yes"}
+FUSION_MODEL_TYPE = os.getenv(
+    "FUSION_MODEL_TYPE", "noise_aware"
+)  # mlp | cross_attention | noise_aware
+FUSION_MODEL_PATH = Path(
+    os.getenv("FUSION_MODEL_PATH", "./checkpoints/noise_aware_fusion_final.pt")
+)

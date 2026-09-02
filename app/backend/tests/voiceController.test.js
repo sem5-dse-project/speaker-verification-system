@@ -1,13 +1,21 @@
 jest.mock('../models/voiceModel')
 jest.mock('../models/templateModel')
+jest.mock('../models/userModel')
 jest.mock('../models/verificationLogModel')
 jest.mock('../services/mlClient')
+jest.mock('../services/voiceLoginCache')
+jest.mock('bcrypt')
 
 const voiceModel = require('../models/voiceModel')
 const templateModel = require('../models/templateModel')
+const userModel = require('../models/userModel')
 const verificationLogModel = require('../models/verificationLogModel')
 const mlClient = require('../services/mlClient')
+const voiceLoginCache = require('../services/voiceLoginCache')
+const bcrypt = require('bcrypt')
 const {
+  identifyVoice,
+  loginWithVoice,
   uploadVerification,
   resetEnrollment,
   getVerificationLogs,
@@ -16,6 +24,7 @@ const { mockRes } = require('./helpers')
 
 describe('voiceController', () => {
   beforeEach(() => {
+    jest.clearAllMocks()
     mlClient.REPLAY_DETECTION = true
     mlClient.detectReplay.mockResolvedValue({
       score: 0.1,
@@ -23,6 +32,112 @@ describe('voiceController', () => {
       is_replay: false,
       accepted: true,
       decision: 'LIVE',
+    })
+  })
+
+  describe('identifyVoice', () => {
+    it('asks re-record when no speech is detected before embedding extraction', async () => {
+      mlClient.detectReplay.mockResolvedValue({
+        score: 0,
+        threshold: 0.76,
+        is_replay: false,
+        accepted: false,
+        decision: 'NO_SPEECH',
+      })
+
+      const req = { file: { path: pathJoinSafe() } }
+      const res = mockRes()
+
+      await identifyVoice(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(mlClient.extractEmbedding).not.toHaveBeenCalled()
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('No speech detected'),
+        }),
+      )
+    })
+
+    it('rejects replay attacks before embedding extraction', async () => {
+      mlClient.detectReplay.mockResolvedValue({
+        score: 0.9,
+        threshold: 0.76,
+        is_replay: true,
+        accepted: false,
+        decision: 'REPLAY',
+      })
+
+      const req = { file: { path: pathJoinSafe() } }
+      const res = mockRes()
+
+      await identifyVoice(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(403)
+      expect(mlClient.extractEmbedding).not.toHaveBeenCalled()
+    })
+
+    it('returns identified user and temporary token', async () => {
+      mlClient.extractEmbedding.mockResolvedValue({
+        embedding: [0.1, 0.2],
+        embedding_dim: 2,
+      })
+      templateModel.getAllTemplatesWithUsers.mockResolvedValue([
+        { user_id: 10, username: 'alice', embedding: [0.1, 0.2] },
+      ])
+      voiceLoginCache.createVoiceLoginSession.mockReturnValue({
+        token: 'temp-1',
+        expires_at: '2026-08-14T00:00:00.000Z',
+        ttl_seconds: 300,
+      })
+
+      const req = { file: { path: pathJoinSafe() } }
+      const res = mockRes()
+
+      await identifyVoice(req, res)
+
+      expect(templateModel.getAllTemplatesWithUsers).toHaveBeenCalled()
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          temporary_login_token: 'temp-1',
+          identified_user: expect.objectContaining({ username: 'alice' }),
+        }),
+      )
+    })
+  })
+
+  describe('loginWithVoice', () => {
+    it('returns 401 when voice session is missing', async () => {
+      voiceLoginCache.getVoiceLoginSession.mockReturnValue(null)
+      const req = { body: { temporary_login_token: 'missing', password: 'secret123' } }
+      const res = mockRes()
+
+      await loginWithVoice(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(401)
+    })
+
+    it('returns 401 when password is invalid', async () => {
+      voiceLoginCache.getVoiceLoginSession.mockReturnValue({
+        identified_user_id: 1,
+        probe_embedding: [0.1, 0.2],
+      })
+      userModel.findAuthById.mockResolvedValue({
+        id: 1,
+        username: 'alice',
+        password: 'hash',
+      })
+      bcrypt.compare.mockResolvedValue(false)
+
+      const req = { body: { temporary_login_token: 'temp', password: 'badpassword' } }
+      const res = mockRes()
+
+      await loginWithVoice(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(401)
+      expect(verificationLogModel.createVerificationLog).not.toHaveBeenCalled()
     })
   })
 

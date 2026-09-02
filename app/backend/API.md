@@ -17,6 +17,7 @@ Get the token from `POST /api/auth/login`.
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | `GET` | `/api/health` | No | Health check |
+| `GET` | `/api/health/db` | No | Database health check |
 | `POST` | `/api/auth/register` | No | Register user |
 | `POST` | `/api/auth/login` | No | Login, returns JWT |
 | `GET` | `/api/users/profile` | Bearer | Current user profile |
@@ -40,6 +41,29 @@ No body.
 {
   "success": true,
   "message": "Voice authentication backend is running"
+}
+```
+
+### `GET /api/health/db`
+
+No body.
+
+**Response `200`**
+
+```json
+{
+  "success": true,
+  "message": "Database connection is healthy"
+}
+```
+
+**Response `503`**
+
+```json
+{
+  "success": false,
+  "message": "Database connection failed",
+  "error": "<db error message>"
 }
 ```
 

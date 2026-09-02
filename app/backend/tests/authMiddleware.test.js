@@ -44,7 +44,7 @@ describe('authMiddleware', () => {
   })
 
   it('sets req.user and calls next for a valid token', () => {
-    const token = jwt.sign({ id: 7, username: 'alice' }, secret, {
+    const token = jwt.sign({ id: 7, username: 'alice', role: 'user' }, secret, {
       expiresIn: '1h',
     })
     const req = { headers: { authorization: `Bearer ${token}` } }
@@ -53,7 +53,7 @@ describe('authMiddleware', () => {
 
     authMiddleware(req, res, next)
 
-    expect(req.user).toEqual({ id: 7, username: 'alice' })
+    expect(req.user).toEqual({ id: 7, username: 'alice', role: 'user' })
     expect(next).toHaveBeenCalled()
     expect(res.status).not.toHaveBeenCalled()
   })

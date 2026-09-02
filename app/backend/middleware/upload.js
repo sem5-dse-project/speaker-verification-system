@@ -26,13 +26,14 @@ const buildUploader = (sampleType) => {
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
       const baseDir = sampleType === 'enrollment' ? 'enrollments' : 'verifications'
-      const userDir = path.join(__dirname, '..', 'uploads', baseDir, `user_${req.user.id}`)
+      const userId = req.user?.id ?? 'anonymous'
+      const userDir = path.join(__dirname, '..', 'uploads', baseDir, `user_${userId}`)
       fs.mkdirSync(userDir, { recursive: true })
       cb(null, userDir)
     },
     filename: (req, file, cb) => {
       const prefix = sampleType === 'enrollment' ? 'enroll' : 'verify'
-      const userId = req.user?.id ?? 'unknown'
+      const userId = req.user?.id ?? 'anonymous'
       const sampleIdx = sampleIndexFromName(file.originalname)
       const samplePart = sampleIdx ? `s${sampleIdx}` : 's'
       // Example: enroll_u1_s2_20260730_083915142_a3f2c1.wav
@@ -68,3 +69,39 @@ module.exports = {
   sampleIndexFromName,
   toTimestampMs,
 }
+
+const collectionStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const label = String(req.body?.label || 'live').toLowerCase()
+    const safeLabel = label === 'replay' ? 'replay' : 'live'
+    const dir = path.join(__dirname, '..', 'uploads', 'collection', safeLabel)
+    fs.mkdirSync(dir, { recursive: true })
+    cb(null, dir)
+  },
+  filename: (req, file, cb) => {
+    const speakerId = String(req.body?.speaker_id || 'unknown')
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, '')
+    const safeSpeaker = speakerId || 'unknown'
+    cb(null, `${safeSpeaker}_${toTimestampMs()}_${shortId()}.wav`)
+  },
+})
+
+const collectionUpload = multer({
+  storage: collectionStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const looksLikeWav =
+      file.mimetype === 'audio/wav' ||
+      file.mimetype === 'audio/x-wav' ||
+      file.originalname.toLowerCase().endsWith('.wav')
+
+    if (!looksLikeWav) {
+      return cb(new Error('Only WAV audio files are allowed'))
+    }
+
+    return cb(null, true)
+  },
+})
+
+module.exports.collectionUpload = collectionUpload

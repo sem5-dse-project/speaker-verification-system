@@ -35,6 +35,9 @@ class VerifyResponse(BaseModel):
     accepted: bool
     decision: str
     rms: float | None = None
+    speech_ms: float | None = None
+    total_ms: float | None = None
+    num_speech_segments: int | None = None
 
 
 class SpoofStageResult(BaseModel):
@@ -58,5 +61,8 @@ class ReplayDetectResponse(BaseModel):
     decision: str
     feature_type: str | None = None
     rms: float | None = None
+    speech_ms: float | None = None
+    total_ms: float | None = None
+    num_speech_segments: int | None = None
     replay: SpoofStageResult | None = None
     la: SpoofStageResult | None = None

@@ -76,7 +76,18 @@ jobs:
             app/server/requirements-dev.txt
 
       - name: Install system audio libs
-        run: sudo apt-get update && sudo apt-get install -y libsndfile1
+        timeout-minutes: 5
+        run: |
+          set -euxo pipefail
+          # GH runners default azure mirrors can hang; point mirror list at archive.ubuntu.com
+          echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
+          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+            sudo sed -i 's|URIs: mirror+file:/etc/apt/apt-mirrors.txt|URIs: http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources
+          fi
+          echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-ci-retries
+          echo 'Acquire::http::Timeout "30";' | sudo tee -a /etc/apt/apt.conf.d/80-ci-retries
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libsndfile1
 
       - name: Install Python dependencies (CPU torch)
         run: |

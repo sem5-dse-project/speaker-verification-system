@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main
+from ml_server.vad import VadResult
 from tests.conftest import make_wav_bytes
 
 
@@ -28,6 +29,18 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     monkeypatch.setattr(main, "get_encoder", fake_get_encoder)
     monkeypatch.setattr(main, "embed_audio_list", fake_embed_audio_list)
+    monkeypatch.setattr(
+        main,
+        "extract_speech_audio",
+        lambda wave: VadResult(
+            has_speech=True,
+            speech_waveform=wave,
+            total_ms=500.0,
+            speech_ms=500.0,
+            num_speech_segments=1,
+            rms=0.1,
+        ),
+    )
     return TestClient(main.app)
 
 
@@ -178,21 +191,22 @@ def test_replay_detect_uncertain(client: TestClient, monkeypatch: pytest.MonkeyP
 
 
 def test_replay_detect_no_speech(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu"):
-        return {
-            "score": 0.0,
-            "threshold": 0.15,
-            "threshold_low": 0.05,
-            "threshold_high": 0.25,
-            "is_replay": False,
-            "is_synthetic": False,
-            "accepted": False,
-            "decision": "NO_SPEECH",
-            "feature_type": "inverted_mel",
-            "rms": 0.001,
-        }
+    def never_called(*_args, **_kwargs):
+        raise AssertionError("anti-spoof model should not run for no-speech clips")
 
-    monkeypatch.setattr(main, "score_anti_spoof", fake_score_anti_spoof)
+    monkeypatch.setattr(main, "score_anti_spoof", never_called)
+    monkeypatch.setattr(
+        main,
+        "extract_speech_audio",
+        lambda wave: VadResult(
+            has_speech=False,
+            speech_waveform=wave,
+            total_ms=1200.0,
+            speech_ms=0.0,
+            num_speech_segments=0,
+            rms=0.001,
+        ),
+    )
     monkeypatch.setattr(main, "REPLAY_ENABLED", True)
     wav = make_wav_bytes()
     response = client.post(
@@ -203,6 +217,34 @@ def test_replay_detect_no_speech(client: TestClient, monkeypatch: pytest.MonkeyP
     body = response.json()
     assert body["decision"] == "NO_SPEECH"
     assert body["accepted"] is False
+    assert body["num_speech_segments"] == 0
+
+
+def test_verify_no_speech_from_vad(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        main,
+        "extract_speech_audio",
+        lambda wave: VadResult(
+            has_speech=False,
+            speech_waveform=wave,
+            total_ms=1000.0,
+            speech_ms=0.0,
+            num_speech_segments=0,
+            rms=0.002,
+        ),
+    )
+
+    response = client.post(
+        "/verify",
+        data={"embedding": "[1,0,0,0]", "threshold": "0.25"},
+        files={"file": ("probe.wav", make_wav_bytes(), "audio/wav")},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["decision"] == "NO_SPEECH"
+    assert body["accepted"] is False
+    assert body["num_speech_segments"] == 0
 
 
 def test_replay_detect_replay(client: TestClient, monkeypatch: pytest.MonkeyPatch):

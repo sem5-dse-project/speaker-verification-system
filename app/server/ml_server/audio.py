@@ -18,6 +18,7 @@ from ml_server.config import (
     MIN_SPEECH_STRONG_MS,
     SAMPLE_RATE,
 )
+from ml_server.vad import VadResult, extract_speech_segments
 
 
 def load_audio_bytes(data: bytes, sample_rate: int = SAMPLE_RATE) -> torch.Tensor:
@@ -35,6 +36,30 @@ def load_audio_bytes(data: bytes, sample_rate: int = SAMPLE_RATE) -> torch.Tenso
         start = max(0, (wave.numel() - max_len) // 2)
         wave = wave[start : start + max_len]
     return wave
+
+
+def extract_speech_audio(
+    waveform: torch.Tensor,
+    sample_rate: int = SAMPLE_RATE,
+) -> VadResult:
+    """Run Silero VAD and return speech-only waveform plus speech metadata."""
+    result = extract_speech_segments(waveform, sample_rate=sample_rate)
+
+    # Keep max clip length consistent after silence removal.
+    max_len = int(sample_rate * MAX_SECONDS)
+    if result.has_speech and result.speech_waveform.numel() > max_len:
+        speech_wave = result.speech_waveform[:max_len]
+        speech_ms = (speech_wave.numel() / sample_rate) * 1000.0
+        return VadResult(
+            has_speech=True,
+            speech_waveform=speech_wave,
+            total_ms=result.total_ms,
+            speech_ms=speech_ms,
+            num_speech_segments=result.num_speech_segments,
+            rms=result.rms,
+        )
+
+    return result
 
 
 def waveform_rms(waveform: torch.Tensor) -> float:

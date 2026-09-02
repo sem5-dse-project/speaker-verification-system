@@ -64,6 +64,11 @@ function Login() {
 
       login(response.data.token, response.data.user, form.rememberMe)
 
+      if (response.data.user?.role === 'admin') {
+        navigate('/admin', { replace: true })
+        return
+      }
+
       navigate('/dashboard', { replace: true })
     } catch (error) {
       setStatusMessage({
@@ -139,6 +144,13 @@ function Login() {
             >
               {isSubmitting ? 'Signing In...' : 'Sign In'}
             </button>
+
+            <Link
+              to="/voice-login"
+              className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Login with Voice
+            </Link>
 
             <p className="pt-1 text-center text-sm text-slate-600">
               Don't have an account?{' '}
