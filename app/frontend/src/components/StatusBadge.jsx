@@ -5,17 +5,20 @@ const STATUS_MAP = {
   ready: {
     label: 'Ready',
     icon: Circle,
-    className: 'bg-slate-100 text-slate-700 ring-1 ring-slate-200',
+    className:
+      'bg-slate-100 text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700',
   },
   recording: {
     label: 'Recording...',
     icon: Mic,
-    className: 'bg-rose-100 text-rose-700 ring-1 ring-rose-200',
+    className:
+      'bg-rose-100 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/50',
   },
   complete: {
     label: 'Recording Complete',
     icon: CheckCircle2,
-    className: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200',
+    className:
+      'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/50',
   },
 }
 

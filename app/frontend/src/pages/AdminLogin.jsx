@@ -3,6 +3,7 @@ import { AtSign, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthCard from '../components/AuthCard.jsx'
 import InputField from '../components/InputField.jsx'
+import PageShell from '../components/PageShell.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import api from '../services/api.js'
 
@@ -81,7 +82,7 @@ function AdminLogin() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-100 to-indigo-50/40 px-4 py-8">
+    <PageShell variant="admin">
       <div className="mx-auto flex max-w-xl items-center justify-center">
         <AuthCard
           title="Admin Login"
@@ -109,12 +110,12 @@ function AdminLogin() {
               error={errors.password}
             />
 
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
               <input
                 type="checkbox"
                 checked={form.rememberMe}
                 onChange={handleFieldChange('rememberMe')}
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300"
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300 dark:border-slate-600 dark:bg-slate-800"
               />
               Remember Me
             </label>
@@ -122,19 +123,16 @@ function AdminLogin() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200/60 transition hover:bg-indigo-500 disabled:bg-indigo-400"
+              className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200/60 transition hover:bg-indigo-500 disabled:bg-indigo-400 dark:shadow-indigo-950/30"
             >
               {isSubmitting ? 'Signing In...' : 'Sign In as Admin'}
             </button>
 
-            <Link
-              to="/login"
-              className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
+            <Link to="/login" className="btn-secondary-lg">
               Back to User Login
             </Link>
 
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2.5 text-sm text-indigo-900">
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2.5 text-sm text-indigo-900 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-200">
               <p className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" />
                 Default seed account: admin1 / admin1234 (change after first login).
@@ -142,14 +140,12 @@ function AdminLogin() {
             </div>
 
             {statusMessage.type === 'error' && (
-              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                {statusMessage.text}
-              </p>
+              <p className="alert-error">{statusMessage.text}</p>
             )}
           </form>
         </AuthCard>
       </div>
-    </main>
+    </PageShell>
   )
 }
 

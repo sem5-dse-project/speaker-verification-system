@@ -3,6 +3,7 @@ import { AtSign, LockKeyhole, Eye, EyeOff, Check } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthCard from '../components/AuthCard.jsx'
 import InputField from '../components/InputField.jsx'
+import PageShell from '../components/PageShell.jsx'
 import PasswordStrength from '../components/PasswordStrength.jsx'
 import api from '../services/api.js'
 
@@ -103,7 +104,7 @@ function Register() {
   }
 
   return (
-    <main className="h-screen overflow-hidden bg-gradient-to-b from-slate-50 via-slate-100 to-blue-50/40 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <PageShell variant="auth">
       <div className="mx-auto flex h-full max-w-6xl items-center justify-center">
         <AuthCard
           title="Create Account"
@@ -135,7 +136,7 @@ function Register() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((previous) => !previous)}
-                  className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                  className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -145,15 +146,15 @@ function Register() {
 
             <PasswordStrength password={form.password} />
 
-            <ul className="grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
+            <ul className="grid gap-1 text-xs text-muted sm:grid-cols-2">
               {requirements.map((requirement) => (
                 <li key={requirement.id} className="flex items-center gap-2">
                   <span
                     className={[
                       'inline-flex h-4 w-4 items-center justify-center rounded-full border transition-colors',
                       requirement.valid
-                        ? 'border-emerald-300 bg-emerald-100 text-emerald-700'
-                        : 'border-slate-300 bg-slate-100 text-slate-400',
+                        ? 'border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                        : 'border-slate-300 bg-slate-100 text-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-500',
                     ].join(' ')}
                   >
                     <Check className="h-3 w-3" />
@@ -166,36 +167,29 @@ function Register() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-1 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200/60 transition-all duration-200 hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-1"
+              className="mt-1 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-200/60 transition-all duration-200 hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-1 dark:shadow-blue-950/30"
             >
               {isSubmitting ? 'Creating Account...' : 'Create Account'}
             </button>
 
-            <p className="pt-1 text-center text-sm text-slate-600">
+            <p className="pt-1 text-center text-sm text-muted">
               Already have an account?{' '}
-              <Link
-                to="/login"
-                className="font-semibold text-blue-600 transition-colors hover:text-blue-500"
-              >
+              <Link to="/login" className="link-primary">
                 Sign In
               </Link>
             </p>
 
             {statusMessage.type === 'success' && (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                {statusMessage.text}
-              </p>
+              <p className="alert-success">{statusMessage.text}</p>
             )}
 
             {statusMessage.type === 'error' && (
-              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                {statusMessage.text}
-              </p>
+              <p className="alert-error">{statusMessage.text}</p>
             )}
           </form>
         </AuthCard>
       </div>
-    </main>
+    </PageShell>
   )
 }
 

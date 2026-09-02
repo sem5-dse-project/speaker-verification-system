@@ -214,16 +214,16 @@ function Recorder({ onRecordingChange, onRecorderError }) {
   }
 
   return (
-    <section className="flex flex-col items-center gap-6 rounded-2xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200 sm:p-8">
-      <div className="relative grid h-28 w-28 place-items-center rounded-full bg-blue-50 ring-2 ring-blue-200">
+    <section className="card flex flex-col items-center gap-6 p-6 text-center sm:p-8">
+      <div className="relative grid h-28 w-28 place-items-center rounded-full bg-blue-50 ring-2 ring-blue-200 dark:bg-blue-950/40 dark:ring-blue-900/50">
         {status === 'recording' && (
-          <span className="absolute h-full w-full animate-ping rounded-full bg-blue-300/40" />
+          <span className="absolute h-full w-full animate-ping rounded-full bg-blue-300/40 dark:bg-blue-500/30" />
         )}
-        <Mic className="relative h-12 w-12 text-blue-600" />
+        <Mic className="relative h-12 w-12 text-blue-600 dark:text-blue-400" />
       </div>
 
       <StatusBadge status={status} />
-      <p className="text-3xl font-bold tabular-nums text-slate-900">{formatSeconds(seconds)}</p>
+      <p className="text-3xl font-bold tabular-nums text-slate-900 dark:text-slate-100">{formatSeconds(seconds)}</p>
 
       <div className="flex flex-wrap justify-center gap-3">
         <PrimaryButton

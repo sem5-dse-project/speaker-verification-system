@@ -3,6 +3,7 @@ import { Download, LogOut, Mic, ShieldPlus, UploadCloud } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
+import PageShell from '../components/PageShell.jsx'
 import SentenceCard from '../components/SentenceCard.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import api from '../services/api.js'
@@ -227,26 +228,23 @@ function AdminDashboard() {
   const replayCount = counts.find((row) => row.label === 'replay')?.count || 0
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-100 to-white px-4 py-8 sm:px-6 lg:px-8">
+    <PageShell variant="admin">
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <header className="card flex flex-wrap items-center justify-between gap-3 p-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Admin Data Collection</h1>
-            <p className="mt-1 text-slate-600">
+            <h1 className="heading-1 text-3xl">Admin Data Collection</h1>
+            <p className="mt-1 text-muted">
               Signed in as {user?.username}. Collect live vs phone-replay WAVs for model fine-tuning.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link
-              to="/dashboard"
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
+            <Link to="/dashboard" className="btn-secondary px-4 py-2 font-semibold">
               User Dashboard
             </Link>
             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500"
+              className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 dark:bg-rose-700 dark:hover:bg-rose-600"
             >
               <LogOut className="h-4 w-4" />
               Logout
@@ -255,25 +253,25 @@ function AdminDashboard() {
         </header>
 
         <section className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">Live samples</p>
-            <p className="text-3xl font-bold text-emerald-600">{liveCount}</p>
+          <div className="card p-5">
+            <p className="text-sm text-subtle">Live samples</p>
+            <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{liveCount}</p>
           </div>
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">Replay samples</p>
-            <p className="text-3xl font-bold text-amber-600">{replayCount}</p>
+          <div className="card p-5">
+            <p className="text-sm text-subtle">Replay samples</p>
+            <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{replayCount}</p>
           </div>
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">Admins</p>
-            <p className="text-3xl font-bold text-indigo-600">{admins.length}</p>
+          <div className="card p-5">
+            <p className="text-sm text-subtle">Admins</p>
+            <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{admins.length}</p>
           </div>
         </section>
 
         <section className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <h2 className="text-xl font-semibold text-slate-900">Collect Sample</h2>
+          <div className="card space-y-4 p-6">
+            <h2 className="heading-2">Collect Sample</h2>
 
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted">
               {phrasesRemaining} of {COLLECTION_PHRASES.length} phrases still available (longer than
               enrollment sentences; each phrase is used once).
             </p>
@@ -281,28 +279,28 @@ function AdminDashboard() {
             {form.phrase ? (
               <SentenceCard sentence={form.phrase} onGenerateSentence={handleGeneratePhrase} />
             ) : (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <p className="alert-warning">
                 All phrases have been collected. Export CSV and archive samples to start a new batch.
               </p>
             )}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-700">Speaker ID</span>
+                <span className="label-text">Speaker ID</span>
                 <input
                   value={form.speaker_id}
                   onChange={handleFormChange('speaker_id')}
                   placeholder="spk01"
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                  className="input-field"
                 />
               </label>
 
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-700">Label</span>
+                <span className="label-text">Label</span>
                 <select
                   value={form.label}
                   onChange={handleFormChange('label')}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                  className="input-field"
                 >
                   <option value="live">Live mic</option>
                   <option value="replay">Phone replay</option>
@@ -310,51 +308,51 @@ function AdminDashboard() {
               </label>
 
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-700">Phone model</span>
+                <span className="label-text">Phone model</span>
                 <input
                   value={form.phone_model}
                   onChange={handleFormChange('phone_model')}
                   placeholder="Samsung A54"
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                  className="input-field"
                 />
               </label>
 
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-700">Distance / volume</span>
+                <span className="label-text">Distance / volume</span>
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     value={form.distance}
                     onChange={handleFormChange('distance')}
                     placeholder="30 cm"
-                    className="rounded-xl border border-slate-300 px-3 py-2"
+                    className="input-field"
                   />
                   <input
                     value={form.volume}
                     onChange={handleFormChange('volume')}
                     placeholder="medium"
-                    className="rounded-xl border border-slate-300 px-3 py-2"
+                    className="input-field"
                   />
                 </div>
               </label>
 
               <label className="block text-sm sm:col-span-2">
-                <span className="mb-1 block font-medium text-slate-700">Notes</span>
+                <span className="label-text">Notes</span>
                 <textarea
                   value={form.notes}
                   onChange={handleFormChange('notes')}
                   rows={2}
                   placeholder="Room noise, playback source, etc."
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                  className="input-field"
                 />
               </label>
             </div>
 
-            <label className="flex items-start gap-2 text-sm text-slate-700">
+            <label className="flex items-start gap-2 text-sm text-body">
               <input
                 type="checkbox"
                 checked={form.consent}
                 onChange={handleFormChange('consent')}
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 dark:border-slate-600 dark:bg-slate-800"
               />
               Speaker consented to use this recording for research and model improvement.
             </label>
@@ -374,14 +372,10 @@ function AdminDashboard() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <div className="card p-6">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold text-slate-900">Recent Samples</h2>
-                <button
-                  type="button"
-                  onClick={handleExportCsv}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                >
+                <h2 className="heading-2">Recent Samples</h2>
+                <button type="button" onClick={handleExportCsv} className="btn-secondary font-semibold">
                   <Download className="h-4 w-4" />
                   Export CSV
                 </button>
@@ -389,30 +383,27 @@ function AdminDashboard() {
 
               <div className="max-h-80 space-y-2 overflow-y-auto">
                 {samples.length === 0 && (
-                  <p className="text-sm text-slate-500">No collection samples yet.</p>
+                  <p className="text-sm text-subtle">No collection samples yet.</p>
                 )}
                 {samples.slice(0, 20).map((sample) => (
-                  <div
-                    key={sample.id}
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700"
-                  >
+                  <div key={sample.id} className="list-item">
                     <p className="font-semibold">
                       {sample.speaker_id} · {sample.label.toUpperCase()}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-subtle">
                       score {sample.replay_score ?? 'n/a'} · {sample.replay_decision ?? 'n/a'} ·{' '}
                       {sample.created_at}
                     </p>
                     {sample.phrase && (
-                      <p className="mt-1 line-clamp-2 text-xs text-slate-600">{sample.phrase}</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted">{sample.phrase}</p>
                     )}
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-              <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-slate-900">
+            <div className="card p-6">
+              <h2 className="mb-4 flex items-center gap-2 heading-2">
                 <ShieldPlus className="h-5 w-5" />
                 Create Admin
               </h2>
@@ -422,21 +413,21 @@ function AdminDashboard() {
                   value={adminForm.username}
                   onChange={handleAdminFormChange('username')}
                   placeholder="New admin username"
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                  className="input-field"
                 />
                 <input
                   type="password"
                   value={adminForm.password}
                   onChange={handleAdminFormChange('password')}
                   placeholder="Password (min 6 chars)"
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                  className="input-field"
                 />
                 <PrimaryButton type="submit" disabled={isCreatingAdmin}>
                   {isCreatingAdmin ? 'Creating...' : 'Create Admin Account'}
                 </PrimaryButton>
               </form>
 
-              <div className="mt-4 space-y-1 text-sm text-slate-600">
+              <div className="mt-4 space-y-1 text-sm text-muted">
                 {admins.map((admin) => (
                   <p key={admin.id}>
                     {admin.username} · joined {admin.created_at}
@@ -448,23 +439,17 @@ function AdminDashboard() {
         </section>
 
         {statusMessage.text && (
-          <p
-            className={`rounded-xl px-4 py-3 text-sm ${
-              statusMessage.type === 'success'
-                ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-                : 'border border-rose-200 bg-rose-50 text-rose-700'
-            }`}
-          >
+          <p className={statusMessage.type === 'success' ? 'alert-success' : 'alert-error'}>
             {statusMessage.text}
           </p>
         )}
 
-        <p className="flex items-center gap-2 text-sm text-slate-500">
+        <p className="flex items-center gap-2 text-sm text-subtle">
           <Mic className="h-4 w-4" />
           WAV files are stored locally under uploads/collection and are gitignored.
         </p>
       </div>
-    </main>
+    </PageShell>
   )
 }
 

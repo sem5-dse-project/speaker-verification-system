@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { CheckCircle2, AlertCircle, Circle, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import PageShell from '../components/PageShell.jsx'
 import SentenceCard from '../components/SentenceCard.jsx'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
@@ -30,6 +31,16 @@ const pickRandomSentence = (exclude = null) => {
     }
   }
   return next
+}
+
+const slotClassName = (done, active) => {
+  if (done) {
+    return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/50'
+  }
+  if (active) {
+    return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/50'
+  }
+  return 'bg-slate-50 text-slate-400 ring-1 ring-slate-200 dark:bg-slate-800/60 dark:text-slate-500 dark:ring-slate-700'
 }
 
 function Enrollment() {
@@ -105,7 +116,6 @@ function Enrollment() {
     setStatusMessage({ type: '', text: '' })
 
     try {
-      // Clear previous (possibly invalid WebM) enrollment files first
       await api.post('/voice/enroll/reset')
 
       for (let index = 0; index < samples.length; index += 1) {
@@ -139,43 +149,37 @@ function Enrollment() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-100 to-white px-4 py-10 sm:px-6 lg:px-8">
+    <PageShell>
       <div className="mx-auto max-w-4xl space-y-6">
         <div>
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
+          <button type="button" onClick={() => navigate('/dashboard')} className="btn-secondary">
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
         </div>
 
         <header className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Voice Enrollment
-          </h1>
-          <p className="text-base text-slate-600 sm:text-lg">
+          <h1 className="heading-1">Voice Enrollment</h1>
+          <p className="text-base text-muted sm:text-lg">
             Record {REQUIRED_SAMPLES} different voice samples to build a stronger enrollment template.
           </p>
         </header>
 
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <section className="card p-6 sm:p-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-subtle">
             Instructions
           </h2>
-          <p className="text-slate-700">
+          <p className="text-body">
             Record {REQUIRED_SAMPLES} samples. Use a different sentence for each if possible.
             Speak clearly in a quiet room. After each recording, click <strong>Save sample</strong>,
             then finish with <strong>Complete enrollment</strong>.
           </p>
         </section>
 
-        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <section className="card p-5">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-slate-700">{progressLabel}</p>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm font-semibold text-body">{progressLabel}</p>
+            <p className="text-sm text-subtle">
               Saved: {sampleCount}/{REQUIRED_SAMPLES}
             </p>
           </div>
@@ -185,19 +189,9 @@ function Enrollment() {
               return (
                 <div
                   key={`slot-${index}`}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-medium ${
-                    done
-                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                      : index === sampleCount
-                        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
-                        : 'bg-slate-50 text-slate-400 ring-1 ring-slate-200'
-                  }`}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-medium ${slotClassName(done, index === sampleCount)}`}
                 >
-                  {done ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
-                    <Circle className="h-4 w-4" />
-                  )}
+                  {done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
                   Sample {index + 1}
                 </div>
               )
@@ -209,7 +203,7 @@ function Enrollment() {
               {samples.map((sample, index) => (
                 <li
                   key={`saved-${index}`}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                  className="list-item flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/60"
                 >
                   <span className="line-clamp-1">
                     #{index + 1}: {sample.sentence}
@@ -217,7 +211,7 @@ function Enrollment() {
                   <button
                     type="button"
                     onClick={() => handleRemoveSample(index)}
-                    className="text-rose-600 hover:underline"
+                    className="text-rose-600 hover:underline dark:text-rose-400"
                     disabled={isSubmitting}
                   >
                     Remove
@@ -230,10 +224,7 @@ function Enrollment() {
 
         {!allSamplesReady && (
           <>
-            <SentenceCard
-              sentence={sentence}
-              onGenerateSentence={handleGenerateSentence}
-            />
+            <SentenceCard sentence={sentence} onGenerateSentence={handleGenerateSentence} />
 
             <Recorder
               key={recorderKey}
@@ -249,7 +240,7 @@ function Enrollment() {
               type="button"
               onClick={handleSaveSample}
               disabled={!canSaveCurrent || isSubmitting}
-              className="w-full bg-slate-800 py-3 hover:bg-slate-700"
+              className="w-full bg-slate-800 py-3 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
             >
               Save sample {sampleCount + 1}
             </PrimaryButton>
@@ -268,30 +259,30 @@ function Enrollment() {
               : `Complete enrollment (${REQUIRED_SAMPLES} samples)`}
           </PrimaryButton>
 
-          <div className="min-h-12 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+          <div className="status-panel">
             {statusMessage.type === 'success' && (
-              <p className="flex items-center gap-2 text-emerald-700">
+              <p className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
                 <CheckCircle2 className="h-4 w-4" />
                 {statusMessage.text}
               </p>
             )}
 
             {statusMessage.type === 'error' && (
-              <p className="flex items-center gap-2 text-rose-700">
+              <p className="flex items-center gap-2 text-rose-700 dark:text-rose-300">
                 <AlertCircle className="h-4 w-4" />
                 {statusMessage.text}
               </p>
             )}
 
             {!statusMessage.type && (
-              <p className="text-slate-500">
+              <p className="text-subtle">
                 Record and save {REQUIRED_SAMPLES} samples, then complete enrollment.
               </p>
             )}
           </div>
         </div>
       </div>
-    </main>
+    </PageShell>
   )
 }
 

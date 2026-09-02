@@ -16,7 +16,11 @@ const getPreferredTheme = () => {
 const ThemeContext = createContext(null)
 
 function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => getPreferredTheme())
+  const [theme, setTheme] = useState(() => {
+    const preferred = getPreferredTheme()
+    document.documentElement.classList.toggle('dark', preferred === 'dark')
+    return preferred
+  })
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
