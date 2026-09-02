@@ -18,15 +18,21 @@
   --color-brand-800: #065f46;
   --color-brand-900: #064e3b;
   --color-brand-950: #022c22;
+
+  /* Dark surfaces — slate base with a subtle green undertone */
+  --color-surface-950: #0a0f0e;
+  --color-surface-900: #121a18;
+  --color-surface-800: #1a2421;
+  --color-surface-700: #24302c;
 }
 
 @layer base {
   * {
-    @apply border-slate-200 dark:border-brand-900/60;
+    @apply border-slate-200 dark:border-brand-900/20;
   }
 
   body {
-    @apply m-0 bg-brand-50 text-slate-900 antialiased dark:bg-brand-950 dark:text-slate-100;
+    @apply m-0 bg-brand-50 text-slate-900 antialiased dark:bg-surface-950 dark:text-slate-100;
     font-family: var(--font-sans);
   }
 
@@ -41,23 +47,23 @@
 
 @layer components {
   .page-auth {
-    @apply relative h-screen overflow-hidden bg-gradient-to-br from-brand-50 via-emerald-50/40 to-teal-100/30 px-4 py-4 dark:from-brand-950 dark:via-teal-950 dark:to-brand-900 sm:px-6 sm:py-6 lg:px-8 lg:py-8;
+    @apply relative h-screen overflow-hidden bg-gradient-to-br from-brand-50 via-emerald-50/40 to-teal-100/30 px-4 py-4 dark:from-surface-950 dark:via-surface-900 dark:to-brand-950/30 sm:px-6 sm:py-6 lg:px-8 lg:py-8;
   }
 
   .page-app {
-    @apply relative min-h-screen bg-gradient-to-b from-brand-50 via-white to-emerald-50/30 px-4 py-10 dark:from-brand-950 dark:via-teal-950 dark:to-brand-900 sm:px-6 lg:px-8;
+    @apply relative min-h-screen bg-gradient-to-b from-brand-50 via-white to-emerald-50/30 px-4 py-10 dark:from-surface-950 dark:via-surface-900 dark:to-brand-950/25 sm:px-6 lg:px-8;
   }
 
   .page-admin {
-    @apply relative min-h-screen bg-gradient-to-b from-brand-50 via-white to-teal-50/40 px-4 py-8 dark:from-brand-950 dark:via-teal-950 dark:to-brand-900 sm:px-6 lg:px-8;
+    @apply relative min-h-screen bg-gradient-to-b from-brand-50 via-white to-teal-50/40 px-4 py-8 dark:from-surface-950 dark:via-surface-900 dark:to-brand-950/25 sm:px-6 lg:px-8;
   }
 
   .card {
-    @apply rounded-2xl bg-white shadow-sm ring-1 ring-brand-100 dark:bg-teal-950/70 dark:ring-brand-800/80 dark:shadow-brand-950/20;
+    @apply rounded-2xl bg-white shadow-sm ring-1 ring-brand-100 dark:bg-surface-900 dark:ring-brand-900/25 dark:shadow-black/25;
   }
 
   .card-muted {
-    @apply rounded-2xl border border-brand-100 bg-brand-50/60 dark:border-brand-800/60 dark:bg-brand-900/40;
+    @apply rounded-2xl border border-brand-100 bg-brand-50/60 dark:border-brand-900/25 dark:bg-surface-800/80;
   }
 
   .heading-1 {
@@ -89,11 +95,11 @@
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-brand-50 dark:border-brand-800 dark:bg-teal-950/60 dark:text-slate-200 dark:hover:bg-brand-900/60;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-brand-50 dark:border-brand-900/30 dark:bg-surface-800 dark:text-slate-200 dark:hover:bg-surface-700;
   }
 
   .btn-secondary-lg {
-    @apply inline-flex w-full items-center justify-center rounded-xl border border-brand-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-brand-50 dark:border-brand-800 dark:bg-teal-950/60 dark:text-slate-200 dark:hover:bg-brand-900/60;
+    @apply inline-flex w-full items-center justify-center rounded-xl border border-brand-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-brand-50 dark:border-brand-900/30 dark:bg-surface-800 dark:text-slate-200 dark:hover:bg-surface-700;
   }
 
   .link-primary {
@@ -101,7 +107,7 @@
   }
 
   .input-field {
-    @apply w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-brand-800 dark:bg-teal-950/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-500 dark:focus:ring-brand-950/40;
+    @apply w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-brand-900/30 dark:bg-surface-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-600 dark:focus:ring-brand-950/40;
   }
 
   .label-text {
@@ -109,7 +115,7 @@
   }
 
   .alert-info {
-    @apply rounded-xl border border-brand-200 bg-brand-50/80 px-3 py-2.5 text-sm text-brand-900 dark:border-brand-800/60 dark:bg-brand-900/40 dark:text-brand-100;
+    @apply rounded-xl border border-brand-200 bg-brand-50/80 px-3 py-2.5 text-sm text-brand-900 dark:border-brand-900/30 dark:bg-surface-800/90 dark:text-brand-200;
   }
 
   .alert-error {
@@ -125,15 +131,15 @@
   }
 
   .status-panel {
-    @apply min-h-12 rounded-xl border border-dashed border-brand-200 bg-brand-50/50 px-4 py-3 text-sm dark:border-brand-800 dark:bg-brand-900/30;
+    @apply min-h-12 rounded-xl border border-dashed border-brand-200 bg-brand-50/50 px-4 py-3 text-sm dark:border-brand-900/25 dark:bg-surface-800/60;
   }
 
   .metric-chip {
-    @apply rounded-lg border border-brand-100 bg-white px-3 py-2 text-slate-700 shadow-sm dark:border-brand-800 dark:bg-teal-950/80 dark:text-slate-200;
+    @apply rounded-lg border border-brand-100 bg-white px-3 py-2 text-slate-700 shadow-sm dark:border-brand-900/25 dark:bg-surface-800 dark:text-slate-200;
   }
 
   .list-item {
-    @apply rounded-xl border border-brand-100 px-3 py-2 text-sm text-slate-700 dark:border-brand-800 dark:text-slate-300;
+    @apply rounded-xl border border-brand-100 px-3 py-2 text-sm text-slate-700 dark:border-brand-900/20 dark:text-slate-300;
   }
 
   .focus-ring {
@@ -141,6 +147,6 @@
   }
 
   .checkbox-brand {
-    @apply h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-300 dark:border-brand-700 dark:bg-teal-950;
+    @apply h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-300 dark:border-brand-800 dark:bg-surface-800;
   }
 }

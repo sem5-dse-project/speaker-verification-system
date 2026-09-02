@@ -10,14 +10,14 @@ function SentenceCard({ sentence, onGenerateSentence }) {
         <button
           type="button"
           onClick={onGenerateSentence}
-          className="inline-flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800 transition-all duration-200 hover:bg-brand-100 hover:text-brand-900 focus-ring dark:bg-brand-900/40 dark:text-brand-200 dark:hover:bg-brand-900/60 dark:hover:text-brand-100"
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800 transition-all duration-200 hover:bg-brand-100 hover:text-brand-900 focus-ring dark:bg-surface-800 dark:text-brand-300 dark:hover:bg-surface-700 dark:hover:text-brand-200"
         >
           <RefreshCcw className="h-4 w-4" />
           Generate New Sentence
         </button>
       </div>
 
-      <p className="rounded-xl bg-brand-50/80 p-5 text-lg leading-relaxed text-slate-800 ring-1 ring-brand-100 dark:bg-brand-900/30 dark:text-slate-100 dark:ring-brand-800/60 sm:text-xl">
+      <p className="rounded-xl bg-brand-50/80 p-5 text-lg leading-relaxed text-slate-800 ring-1 ring-brand-100 dark:bg-surface-800/80 dark:text-slate-100 dark:ring-brand-900/25 sm:text-xl">
         "{sentence}"
       </p>
     </section>

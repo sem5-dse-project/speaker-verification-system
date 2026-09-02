@@ -213,7 +213,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
 
   return (
     <section className="card flex flex-col items-center gap-6 p-6 text-center sm:p-8">
-      <div className="relative grid h-28 w-28 place-items-center rounded-full bg-brand-50 ring-2 ring-brand-200 dark:bg-brand-950/50 dark:ring-brand-800/60">
+      <div className="relative grid h-28 w-28 place-items-center rounded-full bg-brand-50 ring-2 ring-brand-200 dark:bg-surface-800 dark:ring-brand-900/35">
         {status === 'recording' && (
           <span className="absolute h-full w-full animate-ping rounded-full bg-brand-300/40 dark:bg-brand-500/30" />
         )}

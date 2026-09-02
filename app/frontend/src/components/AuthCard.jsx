@@ -2,7 +2,7 @@ import { ShieldCheck, Waves } from 'lucide-react'
 
 function AuthCard({ title, subtitle, children }) {
   return (
-    <section className="grid w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-xl shadow-brand-200/50 ring-1 ring-brand-100 dark:bg-teal-950/80 dark:shadow-brand-950/40 dark:ring-brand-800/80 lg:grid-cols-2">
+    <section className="grid w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-xl shadow-brand-200/50 ring-1 ring-brand-100 dark:bg-surface-900 dark:shadow-black/30 dark:ring-brand-900/25 lg:grid-cols-2">
       <aside className="relative hidden overflow-hidden bg-gradient-to-br from-[#004d40] via-teal-800 to-[#00a884] p-10 text-white lg:block">
         <div className="absolute -left-12 -top-12 h-48 w-48 rounded-full bg-white/10 blur-lg" />
         <div className="absolute -bottom-16 right-0 h-56 w-56 rounded-full bg-emerald-300/20 blur-2xl" />

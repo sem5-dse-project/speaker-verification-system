@@ -38,9 +38,9 @@ const slotClassName = (done, active) => {
     return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/50'
   }
   if (active) {
-    return 'bg-brand-50 text-brand-800 ring-1 ring-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:ring-brand-900/50'
+    return 'bg-brand-50 text-brand-800 ring-1 ring-brand-200 dark:bg-surface-800 dark:text-brand-300 dark:ring-brand-900/30'
   }
-  return 'bg-slate-50 text-slate-400 ring-1 ring-slate-200 dark:bg-slate-800/60 dark:text-slate-500 dark:ring-slate-700'
+  return 'bg-slate-50 text-slate-400 ring-1 ring-slate-200 dark:bg-surface-800/70 dark:text-slate-500 dark:ring-brand-900/15'
 }
 
 function Enrollment() {
@@ -203,7 +203,7 @@ function Enrollment() {
               {samples.map((sample, index) => (
                 <li
                   key={`saved-${index}`}
-                  className="list-item flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/60"
+                  className="list-item flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-surface-800/70"
                 >
                   <span className="line-clamp-1">
                     #{index + 1}: {sample.sentence}
