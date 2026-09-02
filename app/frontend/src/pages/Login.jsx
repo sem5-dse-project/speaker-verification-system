@@ -64,6 +64,11 @@ function Login() {
 
       login(response.data.token, response.data.user, form.rememberMe)
 
+      if (response.data.user?.role === 'admin') {
+        navigate('/admin', { replace: true })
+        return
+      }
+
       navigate('/dashboard', { replace: true })
     } catch (error) {
       setStatusMessage({
