@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { CheckCircle2, AlertCircle, Circle, ArrowLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { CheckCircle2, AlertCircle, Circle, Mic2 } from 'lucide-react'
 import PageShell from '../components/PageShell.jsx'
+import PageHeader from '../components/PageHeader.jsx'
 import SentenceCard from '../components/SentenceCard.jsx'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
@@ -44,7 +44,6 @@ const slotClassName = (done, active) => {
 }
 
 function Enrollment() {
-  const navigate = useNavigate()
   const [sentence, setSentence] = useState(() => pickRandomSentence())
   const [samples, setSamples] = useState([])
   const [currentRecording, setCurrentRecording] = useState(null)
@@ -149,21 +148,13 @@ function Enrollment() {
   }
 
   return (
-    <PageShell narrow>
+    <PageShell narrow showNav>
       <div className="space-y-5 sm:space-y-6">
-        <div>
-          <button type="button" onClick={() => navigate('/dashboard')} className="btn-secondary">
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
-        </div>
-
-        <header className="space-y-2">
-          <h1 className="heading-1">Voice Enrollment</h1>
-          <p className="text-base text-muted sm:text-lg">
-            Record {REQUIRED_SAMPLES} different voice samples to build a stronger enrollment template.
-          </p>
-        </header>
+        <PageHeader
+          icon={Mic2}
+          title="Voice Enrollment"
+          subtitle={`Record ${REQUIRED_SAMPLES} clear samples to build a stronger voice template. Use a different sentence for each when possible.`}
+        />
 
         <section className="card">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-subtle">

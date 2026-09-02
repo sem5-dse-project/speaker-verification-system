@@ -1,28 +1,24 @@
 import { useState } from 'react'
-import { AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ShieldCheck } from 'lucide-react'
 import PageShell from '../components/PageShell.jsx'
+import PageHeader from '../components/PageHeader.jsx'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
+import VerificationVerdict from '../components/VerificationVerdict.jsx'
+import VerificationStepper from '../components/VerificationStepper.jsx'
 import api from '../services/api.js'
 import { formatVerificationResult } from '../utils/verificationResult.js'
 
-const STATUS_STYLES = {
-  success:
-    'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300',
-  warning:
-    'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200',
-  error:
-    'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300',
-  neutral:
-    'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300',
-}
-
 function Verification() {
-  const navigate = useNavigate()
   const [recording, setRecording] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [statusMessage, setStatusMessage] = useState({ type: '', text: '', details: [] })
+  const [statusMessage, setStatusMessage] = useState({
+    type: '',
+    text: '',
+    details: [],
+    decision: null,
+    score: null,
+  })
 
   const handleVerifyVoice = async () => {
     if (!recording?.blob) {
@@ -30,7 +26,7 @@ function Verification() {
     }
 
     setIsSubmitting(true)
-    setStatusMessage({ type: '', text: '' })
+    setStatusMessage({ type: '', text: '', details: [], decision: null, score: null })
 
     try {
       const formData = new FormData()
@@ -49,6 +45,9 @@ function Verification() {
       setStatusMessage({
         type: 'error',
         text: error.response?.data?.message || 'Failed to upload verification sample.',
+        details: [],
+        decision: null,
+        score: null,
       })
     } finally {
       setIsSubmitting(false)
@@ -56,28 +55,22 @@ function Verification() {
   }
 
   return (
-    <PageShell narrow>
+    <PageShell narrow showNav>
       <div className="space-y-5 sm:space-y-6">
-        <div>
-          <button type="button" onClick={() => navigate('/dashboard')} className="btn-secondary">
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
-        </div>
-
-        <header className="space-y-2">
-          <h1 className="heading-1">Voice Verification</h1>
-          <p className="text-base text-muted sm:text-lg">
-            Record your voice and submit it for verification. Quiet clips are rejected, clear replay
-            is blocked, uncertain clips ask you to re-record, then live speech is matched to your
-            enrolled template.
-          </p>
-        </header>
+        <PageHeader
+          icon={ShieldCheck}
+          title="Voice Verification"
+          subtitle="Record your voice for a multi-stage security scan: speech detection, replay screening, synthetic checks, then speaker matching."
+        />
 
         <Recorder
           onRecordingChange={setRecording}
           onRecorderError={(message) =>
-            setStatusMessage(message ? { type: 'error', text: message } : { type: '', text: '' })
+            setStatusMessage(
+              message
+                ? { type: 'error', text: message, details: [], decision: null, score: null }
+                : { type: '', text: '', details: [], decision: null, score: null },
+            )
           }
         />
 
@@ -86,87 +79,32 @@ function Verification() {
             type="button"
             onClick={handleVerifyVoice}
             disabled={!recording?.blob || isSubmitting}
-            className="w-full py-4 text-lg"
+            className="w-full py-4 text-lg sm:w-full"
           >
-            {isSubmitting ? 'Submitting...' : 'Verify Voice'}
+            {isSubmitting ? 'Scanning voice sample...' : 'Verify Voice'}
           </PrimaryButton>
 
-          <div className="status-panel">
-            {statusMessage.type === 'success' && (
-              <p className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
-                <CheckCircle2 className="h-4 w-4" />
-                {statusMessage.text}
-              </p>
-            )}
+          {statusMessage.decision && (
+            <VerificationVerdict decision={statusMessage.decision} score={statusMessage.score} />
+          )}
 
-            {statusMessage.type === 'error' && (
-              <p className="flex items-center gap-2 text-rose-700 dark:text-rose-300">
-                <AlertCircle className="h-4 w-4" />
-                {statusMessage.text}
+          {!statusMessage.decision && (
+            <div className="status-panel">
+              <p className="text-subtle">
+                Results appear here after verification — including replay and speaker-match stages.
               </p>
-            )}
-
-            {statusMessage.type === 'warning' && (
-              <p className="flex items-center gap-2 text-amber-700 dark:text-amber-200">
-                <AlertCircle className="h-4 w-4" />
-                {statusMessage.text}
-              </p>
-            )}
-
-            {!statusMessage.type && (
-              <p className="text-subtle">Status messages will appear here.</p>
-            )}
-          </div>
+            </div>
+          )}
 
           {statusMessage.details?.length > 0 && (
-            <section className="card p-4">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h2 className="heading-2">Verification metrics</h2>
-                  <p className="text-sm text-muted">
-                    Stage-by-stage breakdown for the detected voice sample.
-                  </p>
-                </div>
+            <section className="card">
+              <div className="mb-4">
+                <h2 className="heading-2">Security pipeline</h2>
+                <p className="text-sm text-muted">
+                  Stage-by-stage breakdown of how your sample was evaluated.
+                </p>
               </div>
-
-              <div className="space-y-4">
-                {statusMessage.details.map((stage, index) => (
-                  <article key={`${stage.label}-${index}`} className="card-muted p-4">
-                    <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold uppercase tracking-wide text-subtle">
-                          Stage {index + 1}
-                        </p>
-                        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                          {stage.label}
-                        </h3>
-                        <p className="mt-1 text-sm text-muted">{stage.summary}</p>
-                      </div>
-
-                      <span
-                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${STATUS_STYLES[stage.status] || STATUS_STYLES.neutral}`}
-                      >
-                        {stage.status}
-                      </span>
-                    </div>
-
-                    {stage.metrics?.length > 0 && (
-                      <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        {stage.metrics.map((metric) => (
-                          <div key={`${stage.label}-${metric.label}`} className="metric-chip">
-                            <dt className="text-xs font-medium uppercase tracking-wide text-subtle">
-                              {metric.label}
-                            </dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                              {metric.value}
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                    )}
-                  </article>
-                ))}
-              </div>
+              <VerificationStepper stages={statusMessage.details} />
             </section>
           )}
         </div>

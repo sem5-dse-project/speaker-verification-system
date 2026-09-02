@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Mic, PauseCircle, PlayCircle, Trash2 } from 'lucide-react'
 import PrimaryButton from './PrimaryButton.jsx'
 import StatusBadge from './StatusBadge.jsx'
+import AudioWaveform, { BAR_COUNT } from './AudioWaveform.jsx'
 import { floatSamplesToWavBlob } from '../utils/audioWav.js'
 
 const formatSeconds = (seconds) => {
@@ -10,10 +11,13 @@ const formatSeconds = (seconds) => {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 }
 
+const emptyLevels = () => Array(BAR_COUNT).fill(0.08)
+
 function Recorder({ onRecordingChange, onRecorderError }) {
   const [status, setStatus] = useState('ready')
   const [seconds, setSeconds] = useState(0)
   const [audioUrl, setAudioUrl] = useState(null)
+  const [levels, setLevels] = useState(emptyLevels)
 
   const streamRef = useRef(null)
   const timerRef = useRef(null)
@@ -26,6 +30,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
   const recordingRef = useRef(false)
 
   const hasRecording = useMemo(() => Boolean(audioUrl), [audioUrl])
+  const isRecording = status === 'recording'
 
   const cleanupAudioGraph = () => {
     recordingRef.current = false
@@ -67,6 +72,11 @@ function Recorder({ onRecordingChange, onRecorderError }) {
     }
   }, [audioUrl])
 
+  const pushLevel = (rms) => {
+    const normalized = Math.min(1, Math.max(0.08, rms * 10))
+    setLevels((previous) => [...previous.slice(1), normalized])
+  }
+
   const startTimer = () => {
     timerRef.current = setInterval(() => {
       setSeconds((previous) => previous + 1)
@@ -101,6 +111,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
       onRecordingChange(null)
       onRecorderError('')
       cleanupAudioGraph()
+      setLevels(emptyLevels())
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -124,6 +135,12 @@ function Recorder({ onRecordingChange, onRecorderError }) {
         }
         const input = event.inputBuffer.getChannelData(0)
         pcmChunksRef.current.push(new Float32Array(input))
+
+        let sum = 0
+        for (let index = 0; index < input.length; index += 1) {
+          sum += input[index] * input[index]
+        }
+        pushLevel(Math.sqrt(sum / input.length))
       }
 
       source.connect(processor)
@@ -144,6 +161,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
       cleanupAudioGraph()
       setStatus('ready')
       stopTimer()
+      setLevels(emptyLevels())
       onRecorderError('Microphone access failed. Please allow permissions and try again.')
     }
   }
@@ -163,6 +181,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
       if (totalLength < sampleRateRef.current * 0.5) {
         cleanupAudioGraph()
         setStatus('ready')
+        setLevels(emptyLevels())
         onRecorderError('Recording too short. Please speak for at least half a second.')
         return
       }
@@ -185,6 +204,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
       cleanupAudioGraph()
       setStatus('ready')
       setAudioUrl(null)
+      setLevels(emptyLevels())
       onRecordingChange(null)
       onRecorderError(error.message || 'Failed to encode WAV recording.')
     }
@@ -207,27 +227,41 @@ function Recorder({ onRecordingChange, onRecorderError }) {
     setAudioUrl(null)
     setSeconds(0)
     setStatus('ready')
+    setLevels(emptyLevels())
     onRecordingChange(null)
     onRecorderError('')
   }
 
   return (
     <section className="card flex flex-col items-center gap-5 p-4 text-center sm:gap-6 sm:p-8">
-      <div className="relative grid h-24 w-24 place-items-center rounded-full bg-brand-50 ring-2 ring-brand-200 sm:h-28 sm:w-28 dark:bg-surface-800 dark:ring-brand-900/35">
-        {status === 'recording' && (
-          <span className="absolute h-full w-full animate-ping rounded-full bg-brand-300/40 dark:bg-brand-500/30" />
-        )}
-        <Mic className="relative h-10 w-10 text-brand-600 sm:h-12 sm:w-12 dark:text-brand-400" />
+      <div className="relative w-full max-w-md">
+        <AudioWaveform levels={levels} active={isRecording || hasRecording} />
+        <div className="absolute left-1/2 top-1/2 grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-brand-50 ring-2 ring-brand-200 sm:h-24 sm:w-24 dark:bg-surface-800 dark:ring-brand-900/35">
+          {isRecording && (
+            <span className="absolute h-full w-full animate-ping rounded-full bg-brand-300/40 dark:bg-brand-500/30" />
+          )}
+          <Mic className="relative h-9 w-9 text-brand-600 sm:h-10 sm:w-10 dark:text-brand-400" />
+        </div>
       </div>
 
       <StatusBadge status={status} />
-      <p className="text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl dark:text-slate-100">{formatSeconds(seconds)}</p>
+      <p className="text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl dark:text-slate-100">
+        {formatSeconds(seconds)}
+      </p>
+
+      <p className="max-w-sm text-xs text-subtle sm:text-sm">
+        {isRecording
+          ? 'Speak naturally — the waveform reacts to your voice level.'
+          : hasRecording
+            ? 'Recording captured. Play it back or delete to try again.'
+            : 'Tap start and read the sentence clearly in a quiet room.'}
+      </p>
 
       <div className="grid w-full max-w-md grid-cols-1 gap-2 sm:max-w-none sm:flex sm:flex-wrap sm:justify-center sm:gap-3">
         <PrimaryButton
           type="button"
           onClick={handleStartRecording}
-          disabled={status === 'recording'}
+          disabled={isRecording}
           className="sm:w-auto"
         >
           <Mic className="mr-2 h-4 w-4" />
@@ -237,7 +271,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
         <PrimaryButton
           type="button"
           onClick={handleStopRecording}
-          disabled={status !== 'recording'}
+          disabled={!isRecording}
           className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 sm:w-auto dark:bg-brand-900 dark:hover:bg-brand-800"
         >
           <PauseCircle className="mr-2 h-4 w-4" />
@@ -247,7 +281,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
         <PrimaryButton
           type="button"
           onClick={handlePlayRecording}
-          disabled={!hasRecording || status === 'recording'}
+          disabled={!hasRecording || isRecording}
           className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 sm:w-auto dark:bg-brand-900 dark:hover:bg-brand-800"
         >
           <PlayCircle className="mr-2 h-4 w-4" />
@@ -257,7 +291,7 @@ function Recorder({ onRecordingChange, onRecorderError }) {
         <PrimaryButton
           type="button"
           onClick={handleDeleteRecording}
-          disabled={!hasRecording || status === 'recording'}
+          disabled={!hasRecording || isRecording}
           className="bg-brand-800 shadow-brand-200 hover:bg-brand-700 sm:w-auto dark:bg-brand-900 dark:hover:bg-brand-800"
         >
           <Trash2 className="mr-2 h-4 w-4" />

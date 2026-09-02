@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { ArrowLeft, AlertCircle, CheckCircle2, Mic, UserRound } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Mic, UserRound } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import PageShell from '../components/PageShell.jsx'
+import PageHeader from '../components/PageHeader.jsx'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -88,19 +89,16 @@ function VoiceLogin() {
   return (
     <PageShell narrow>
       <div className="space-y-5 sm:space-y-6">
-        <div>
-          <button type="button" onClick={() => navigate('/login')} className="btn-secondary">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Login
-          </button>
-        </div>
-
-        <header className="space-y-2">
-          <h1 className="heading-1">Login with Voice</h1>
-          <p className="text-base text-muted sm:text-lg">
-            Record once, pass replay detection, then confirm your password.
-          </p>
-        </header>
+        <PageHeader
+          icon={Mic}
+          title="Login with Voice"
+          subtitle="Record once, pass replay detection, then confirm with your password."
+          action={
+            <Link to="/login" className="btn-secondary">
+              Password login
+            </Link>
+          }
+        />
 
         <Recorder
           onRecordingChange={(value) => {

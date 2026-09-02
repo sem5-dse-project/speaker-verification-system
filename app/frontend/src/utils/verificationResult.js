@@ -210,6 +210,8 @@ export function formatVerificationResult(result, fallbackMessage = 'Verification
       type: 'success',
       text: fallbackMessage,
       details: buildVerificationDetails(result),
+      decision: null,
+      score: result?.score,
     }
   }
 
@@ -218,6 +220,8 @@ export function formatVerificationResult(result, fallbackMessage = 'Verification
       type: 'error',
       text: `Replay attack detected${scoreText}${stages}`,
       details: buildVerificationDetails(result),
+      decision,
+      score: result?.score,
     }
   }
 
@@ -226,6 +230,8 @@ export function formatVerificationResult(result, fallbackMessage = 'Verification
       type: 'error',
       text: `Synthetic spoof detected${scoreText}${stages}`,
       details: buildVerificationDetails(result),
+      decision,
+      score: result?.score,
     }
   }
 
@@ -234,6 +240,8 @@ export function formatVerificationResult(result, fallbackMessage = 'Verification
       type: 'warning',
       text: `Could not confidently check for spoof — please re-record${scoreText}${stages}`,
       details: buildVerificationDetails(result),
+      decision,
+      score: result?.score,
     }
   }
 
@@ -242,6 +250,8 @@ export function formatVerificationResult(result, fallbackMessage = 'Verification
       type: 'warning',
       text: `No speech detected — please speak clearly and try again${scoreText}`,
       details: buildVerificationDetails(result),
+      decision,
+      score: result?.score,
     }
   }
 
@@ -249,5 +259,7 @@ export function formatVerificationResult(result, fallbackMessage = 'Verification
     type: decision === 'REJECT' ? 'error' : 'success',
     text: `Verification ${decision}${scoreText}${stages}`,
     details: buildVerificationDetails(result),
+    decision,
+    score: result?.score,
   }
 }
