@@ -106,6 +106,59 @@ describe('voiceController', () => {
         }),
       )
     })
+
+    it('rejects when best similarity is below identify threshold', async () => {
+      mlClient.extractEmbedding.mockResolvedValue({
+        embedding: [1, 0],
+        embedding_dim: 2,
+      })
+      // Cosine with [0, 1] is 0 — below default IDENTIFY_THRESHOLD
+      templateModel.getAllTemplatesWithUsers.mockResolvedValue([
+        { user_id: 10, username: 'alice', embedding: [0, 1] },
+      ])
+
+      const req = { file: { path: pathJoinSafe() } }
+      const res = mockRes()
+
+      await identifyVoice(req, res)
+
+      expect(voiceLoginCache.createVoiceLoginSession).not.toHaveBeenCalled()
+      expect(res.status).toHaveBeenCalledWith(401)
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('Could not identify'),
+          identify: expect.objectContaining({ reason: 'below_threshold' }),
+        }),
+      )
+    })
+
+    it('rejects when top two matches are too close (ambiguous)', async () => {
+      mlClient.extractEmbedding.mockResolvedValue({
+        embedding: [1, 0],
+        embedding_dim: 2,
+      })
+      // Both nearly identical to probe → high scores, tiny margin
+      templateModel.getAllTemplatesWithUsers.mockResolvedValue([
+        { user_id: 10, username: 'alice', embedding: [1, 0.01] },
+        { user_id: 11, username: 'bob', embedding: [1, 0.02] },
+      ])
+
+      const req = { file: { path: pathJoinSafe() } }
+      const res = mockRes()
+
+      await identifyVoice(req, res)
+
+      expect(voiceLoginCache.createVoiceLoginSession).not.toHaveBeenCalled()
+      expect(res.status).toHaveBeenCalledWith(401)
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('ambiguous'),
+          identify: expect.objectContaining({ reason: 'ambiguous' }),
+        }),
+      )
+    })
   })
 
   describe('loginWithVoice', () => {

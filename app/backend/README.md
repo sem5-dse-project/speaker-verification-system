@@ -135,10 +135,15 @@ Add to `.env`:
 ```env
 ML_SERVER_URL=http://localhost:8000
 REQUIRED_ENROLLMENT_SAMPLES=3
+DEFAULT_VERIFY_THRESHOLD=0.25
+IDENTIFY_THRESHOLD=0.25
+IDENTIFY_MARGIN=0.05
 REPLAY_DETECTION=true
 ```
 
 After **3** enrollment uploads, Express calls `/enroll/template` and stores the average embedding in `enrollment_templates`. Verify runs **replay detect** first (`/replay/detect`), then speaker match via `/verify` (unless `REPLAY_DETECTION=false`).
+
+Voice login identify (`POST /api/voice/identify`) picks the highest cosine among enrolled templates, then applies an open-set gate: score must be ≥ `IDENTIFY_THRESHOLD`, and (when ≥2 templates) best−second ≥ `IDENTIFY_MARGIN`. Otherwise it returns 401 without a userid guess.
 
 ## Common errors
 
