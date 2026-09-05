@@ -23,6 +23,49 @@ def load_ecapa_encoder(
     except ImportError as exc:  # pragma: no cover
         raise ImportError("Install speechbrain: pip install speechbrain huggingface_hub") from exc
 
+    # SpeechBrain LazyModule + Windows inspect paths break later transformers imports.
+    try:
+        from speechbrain.utils.importutils import LazyModule
+        import importlib
+        import inspect as _inspect
+        import sys
+        import warnings
+
+        if not getattr(LazyModule.ensure_module, "_sv_win_patch", False):
+
+            def ensure_module(self, stacklevel: int):  # type: ignore[no-untyped-def]
+                importer_frame = None
+                try:
+                    importer_frame = _inspect.getframeinfo(
+                        sys._getframe(stacklevel + 1)
+                    )
+                except AttributeError:
+                    warnings.warn(
+                        "Failed to inspect frame for SpeechBrain lazy import guard."
+                    )
+                if importer_frame is not None:
+                    filename = importer_frame.filename.replace("\\", "/")
+                    if filename.endswith("/inspect.py"):
+                        raise AttributeError()
+                if self.lazy_module is None:
+                    try:
+                        if self.package is None:
+                            self.lazy_module = importlib.import_module(self.target)
+                        else:
+                            self.lazy_module = importlib.import_module(
+                                f".{self.target}", self.package
+                            )
+                    except Exception as e:
+                        raise ImportError(
+                            f"Lazy import of {repr(self)} failed"
+                        ) from e
+                return self.lazy_module
+
+            ensure_module._sv_win_patch = True  # type: ignore[attr-defined]
+            LazyModule.ensure_module = ensure_module  # type: ignore[method-assign]
+    except Exception:
+        pass
+
     savedir = Path(savedir) if savedir is not None else ECAPA_SAVEDIR
     savedir.mkdir(parents=True, exist_ok=True)
     classifier = EncoderClassifier.from_hparams(
