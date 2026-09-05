@@ -23,9 +23,14 @@ def score_anti_spoof(
     threshold: float | None = None,
     la_threshold: float | None = None,
     device: str = DEVICE,
+    la_waveform=None,
 ) -> dict:
     """
     Speech gate + inverted-Mel replay, then optional LA scoring (WavLM+ASP default).
+
+    ``waveform`` is typically VAD speech (good for replay).
+    ``la_waveform`` should be the full pre-VAD clip for WavLM — VAD crops push
+    bona fide LA scores to ~1.0 (false SYNTHETIC).
 
     Final decision is driven by inverted-Mel unless ``LA_HARD_GATE`` is on.
 
@@ -45,8 +50,9 @@ def score_anti_spoof(
     la = None
     la_stage = None
     if LA_ENABLED:
+        la_input = la_waveform if la_waveform is not None else waveform
         la = score_la(
-            waveform,
+            la_input,
             threshold=la_threshold,
             device=device,
             check_speech=False,

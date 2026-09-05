@@ -181,12 +181,14 @@ async def replay_detect(
                 num_speech_segments=vad.num_speech_segments,
             )
 
-        wave = vad.speech_waveform
+        speech = vad.speech_waveform
         result = score_anti_spoof(
-            wave,
+            speech,
             threshold=threshold,
             la_threshold=la_threshold,
             device=DEVICE,
+            # WavLM LA was trained on full clips; VAD crops false-trigger SYNTHETIC.
+            la_waveform=wave,
         )
         result["speech_ms"] = vad.speech_ms
         result["total_ms"] = vad.total_ms

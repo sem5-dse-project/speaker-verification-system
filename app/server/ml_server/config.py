@@ -94,8 +94,9 @@ _DEFAULT_LFCC_LA_CKPT = (
     / "best_lfcc_la2019.pt"
 )
 
-# wavlm (default) | lfcc
-LA_BACKEND = os.getenv("LA_BACKEND", "wavlm").strip().lower()
+# wavlm | lfcc — WavLM is strong on ASVspoof LA but saturates (~1.0) on browser mics.
+# Prefer lfcc when LA_HARD_GATE=true for laptop/app verify; use wavlm soft-only for experiments.
+LA_BACKEND = os.getenv("LA_BACKEND", "lfcc").strip().lower()
 _DEFAULT_LA_CKPT = (
     _DEFAULT_LFCC_LA_CKPT if LA_BACKEND == "lfcc" else _DEFAULT_WAVLM_LA_CKPT
 )
