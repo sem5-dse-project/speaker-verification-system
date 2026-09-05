@@ -119,7 +119,7 @@ def test_verify_empty_file(client: TestClient):
 
 
 def test_replay_detect_live(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu"):
+    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu", **_kwargs):
         return {
             "score": 0.1,
             "threshold": 0.74,
@@ -129,7 +129,7 @@ def test_replay_detect_live(client: TestClient, monkeypatch: pytest.MonkeyPatch)
             "is_synthetic": False,
             "accepted": True,
             "decision": "LIVE",
-            "feature_type": "inverted_mel+lfcc",
+            "feature_type": "inverted_mel+wavlm",
             "replay": {
                 "score": 0.1,
                 "threshold": 0.74,
@@ -144,7 +144,7 @@ def test_replay_detect_live(client: TestClient, monkeypatch: pytest.MonkeyPatch)
                 "threshold_low": 0.4,
                 "threshold_high": 0.6,
                 "decision": "LIVE",
-                "feature_type": "lfcc",
+                "feature_type": "wavlm",
             },
         }
 
@@ -163,7 +163,7 @@ def test_replay_detect_live(client: TestClient, monkeypatch: pytest.MonkeyPatch)
 
 
 def test_replay_detect_uncertain(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu"):
+    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu", **_kwargs):
         return {
             "score": 0.72,
             "threshold": 0.74,
@@ -173,7 +173,7 @@ def test_replay_detect_uncertain(client: TestClient, monkeypatch: pytest.MonkeyP
             "is_synthetic": False,
             "accepted": False,
             "decision": "UNCERTAIN",
-            "feature_type": "inverted_mel+lfcc",
+            "feature_type": "inverted_mel+wavlm",
         }
 
     monkeypatch.setattr(main, "score_anti_spoof", fake_score_anti_spoof)
@@ -248,7 +248,7 @@ def test_verify_no_speech_from_vad(client: TestClient, monkeypatch: pytest.Monke
 
 
 def test_replay_detect_replay(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu"):
+    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu", **_kwargs):
         return {
             "score": 0.9,
             "threshold": 0.74,
@@ -273,7 +273,7 @@ def test_replay_detect_replay(client: TestClient, monkeypatch: pytest.MonkeyPatc
 
 
 def test_replay_detect_synthetic(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu"):
+    def fake_score_anti_spoof(wave, threshold=None, la_threshold=None, device="cpu", **_kwargs):
         return {
             "score": 0.95,
             "threshold": 0.5,
@@ -283,14 +283,14 @@ def test_replay_detect_synthetic(client: TestClient, monkeypatch: pytest.MonkeyP
             "is_synthetic": True,
             "accepted": False,
             "decision": "SYNTHETIC",
-            "feature_type": "inverted_mel+lfcc",
+            "feature_type": "inverted_mel+wavlm",
             "la": {
                 "score": 0.95,
                 "threshold": 0.5,
                 "threshold_low": 0.4,
                 "threshold_high": 0.6,
                 "decision": "SYNTHETIC",
-                "feature_type": "lfcc",
+                "feature_type": "wavlm",
             },
         }
 

@@ -1,4 +1,4 @@
-"""LFCC-LA (ASVspoof 2019 Logical Access) synthetic-spoof scorer."""
+"""LA (synthetic) spoof scorer — WavLM+ASP by default, optional LFCC CNN."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import torch
 from ml_server.audio import has_sufficient_speech
 from ml_server.config import (
     DEVICE,
+    LA_BACKEND,
     LA_CHECKPOINT,
     LA_MARGIN,
     LA_T_HIGH,
@@ -20,8 +21,10 @@ from ml_server.replay_model import AudioConfig, ReplayCNN, fix_length
 
 _la_model = None
 _la_threshold: float | None = None
-_la_config: AudioConfig | None = None
+_la_config = None
 _la_ckpt_path: Path | None = None
+_la_backend: str | None = None
+_la_feature_type: str = "wavlm"
 
 
 def _audio_config_from_ckpt(ckpt: dict) -> AudioConfig:
@@ -61,39 +64,66 @@ def decide_la_band(score: float, t_low: float, t_high: float) -> str:
 
 
 def get_la_detector(device: str = DEVICE):
-    """Lazy-load LFCC-LA ReplayCNN + center threshold from checkpoint."""
-    global _la_model, _la_threshold, _la_config, _la_ckpt_path
+    """Lazy-load LA detector (WavLM by default, or LFCC CNN)."""
+    global _la_model, _la_threshold, _la_config, _la_ckpt_path, _la_backend, _la_feature_type
 
     ckpt_path = Path(LA_CHECKPOINT)
-    if _la_model is not None and _la_ckpt_path == ckpt_path:
-        return _la_model, float(_la_threshold), _la_config
+    backend = (LA_BACKEND or "wavlm").strip().lower()
+    if backend not in {"wavlm", "lfcc"}:
+        raise ValueError(f"Unsupported LA_BACKEND={backend!r}; use wavlm or lfcc")
+
+    if (
+        _la_model is not None
+        and _la_ckpt_path == ckpt_path
+        and _la_backend == backend
+    ):
+        return _la_model, float(_la_threshold), _la_config, _la_feature_type
 
     if not ckpt_path.is_file():
         raise FileNotFoundError(
             f"LA checkpoint not found: {ckpt_path}. "
-            "Train lfcc_la2019 or set LA_CHECKPOINT / LA_ENABLED=false."
+            "Train wavlm_la2019 (or lfcc_la2019) or set LA_CHECKPOINT / LA_ENABLED=false."
         )
 
     map_device = torch.device(
         device if device != "cuda" or torch.cuda.is_available() else "cpu"
     )
-    ckpt = torch.load(ckpt_path, map_location=map_device, weights_only=False)
-    config = _audio_config_from_ckpt(ckpt)
-    model = ReplayCNN(config).to(map_device)
-    model.load_state_dict(ckpt["model_state"])
-    model.eval()
 
-    thr = (
-        float(LA_THRESHOLD)
-        if LA_THRESHOLD is not None
-        else float(ckpt["threshold"])
-    )
+    if backend == "wavlm":
+        from ml_server.wavlm_model import WavLMAudioConfig, WavLMSpoofDetector
+
+        model, ckpt = WavLMSpoofDetector.load_checkpoint(ckpt_path, map_device)
+        audio_cfg = ckpt.get("audio_config") or {}
+        config = WavLMAudioConfig(
+            sample_rate=int(audio_cfg.get("sample_rate", 16000)),
+            seconds=float(audio_cfg.get("seconds", 4.0)),
+        )
+        feature_type = "wavlm"
+        thr = (
+            float(LA_THRESHOLD)
+            if LA_THRESHOLD is not None
+            else float(ckpt["threshold"])
+        )
+    else:
+        ckpt = torch.load(ckpt_path, map_location=map_device, weights_only=False)
+        config = _audio_config_from_ckpt(ckpt)
+        model = ReplayCNN(config).to(map_device)
+        model.load_state_dict(ckpt["model_state"])
+        model.eval()
+        feature_type = getattr(config, "feature_type", None) or "lfcc"
+        thr = (
+            float(LA_THRESHOLD)
+            if LA_THRESHOLD is not None
+            else float(ckpt["threshold"])
+        )
 
     _la_model = model
     _la_threshold = thr
     _la_config = config
     _la_ckpt_path = ckpt_path
-    return model, thr, config
+    _la_backend = backend
+    _la_feature_type = feature_type
+    return model, thr, config, feature_type
 
 
 @torch.inference_mode()
@@ -104,7 +134,7 @@ def score_la(
     check_speech: bool = True,
 ) -> dict:
     """Score mono waveform for synthetic spoof. LIVE|UNCERTAIN|SYNTHETIC|NO_SPEECH."""
-    model, ckpt_thr, config = get_la_detector(device=device)
+    model, ckpt_thr, config, feature_type = get_la_detector(device=device)
     center = ckpt_thr if threshold is None else float(threshold)
     center, t_low, t_high = resolve_la_band_thresholds(center)
     map_device = next(model.parameters()).device
@@ -125,14 +155,24 @@ def score_la(
                 "is_synthetic": False,
                 "accepted": False,
                 "decision": "NO_SPEECH",
-                "feature_type": config.feature_type,
+                "feature_type": feature_type,
                 "rms": rms,
             }
 
     wave = fix_length(wave, config.samples, random_crop=False)
     batch = wave.unsqueeze(0).to(map_device)
 
-    logit = model(batch).reshape(-1)[0]
+    if feature_type == "wavlm":
+        attention_mask = torch.ones(
+            batch.shape[0],
+            batch.shape[1],
+            dtype=torch.long,
+            device=map_device,
+        )
+        logit = model(batch, attention_mask=attention_mask).reshape(-1)[0]
+    else:
+        logit = model(batch).reshape(-1)[0]
+
     score = float(torch.sigmoid(logit).item())
     decision = decide_la_band(score, t_low, t_high)
     is_synthetic = decision == "SYNTHETIC"
@@ -144,6 +184,6 @@ def score_la(
         "is_synthetic": is_synthetic,
         "accepted": decision == "LIVE",
         "decision": decision,
-        "feature_type": config.feature_type,
+        "feature_type": feature_type,
         "rms": rms,
     }

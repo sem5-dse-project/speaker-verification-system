@@ -25,6 +25,7 @@ from ml_server.config import (
     FUSION_MODEL_PATH,
     FUSION_MODEL_TYPE,
     HOST,
+    LA_BACKEND,
     LA_CHECKPOINT,
     LA_ENABLED,
     LA_HARD_GATE,
@@ -122,6 +123,7 @@ def health() -> HealthResponse:
     )
     la_note = (
         f"; la={'on' if LA_ENABLED else 'off'}"
+        f"/{LA_BACKEND}"
         f"{'/hard' if LA_ENABLED and LA_HARD_GATE else '/soft' if LA_ENABLED else ''}"
         f" ({LA_CHECKPOINT.name})"
         if LA_CHECKPOINT
@@ -141,7 +143,7 @@ async def replay_detect(
     la_threshold: Annotated[float | None, Form()] = None,
 ) -> ReplayDetectResponse:
     """
-    Anti-spoof cascade: inverted-Mel replay, then optional LFCC-LA synthetic.
+    Anti-spoof cascade: inverted-Mel replay, then optional LA synthetic (WavLM or LFCC).
 
     decision: LIVE | UNCERTAIN | REPLAY | SYNTHETIC | NO_SPEECH.
     Express rejects REPLAY/SYNTHETIC, asks re-record on UNCERTAIN/NO_SPEECH,
@@ -179,12 +181,14 @@ async def replay_detect(
                 num_speech_segments=vad.num_speech_segments,
             )
 
-        wave = vad.speech_waveform
+        speech = vad.speech_waveform
         result = score_anti_spoof(
-            wave,
+            speech,
             threshold=threshold,
             la_threshold=la_threshold,
             device=DEVICE,
+            # WavLM LA was trained on full clips; VAD crops false-trigger SYNTHETIC.
+            la_waveform=wave,
         )
         result["speech_ms"] = vad.speech_ms
         result["total_ms"] = vad.total_ms

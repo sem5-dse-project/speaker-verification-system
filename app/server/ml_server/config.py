@@ -74,8 +74,17 @@ _raw_t_high = os.getenv("REPLAY_T_HIGH", "").strip()
 REPLAY_T_LOW = float(_raw_t_low) if _raw_t_low else None
 REPLAY_T_HIGH = float(_raw_t_high) if _raw_t_high else None
 
-# ASVspoof 2019 LA (synthetic) LFCC CNN — second stage after inverted-Mel replay.
-_DEFAULT_LA_CKPT = (
+# ASVspoof 2019 LA (synthetic) — WavLM+ASP by default; LFCC CNN via LA_BACKEND=lfcc.
+_DEFAULT_WAVLM_LA_CKPT = (
+    _REPO_ROOT
+    / "replay-cnn-baseline"
+    / "experiments"
+    / "wavlm_la2019"
+    / "runs"
+    / "wavlm_la"
+    / "best_wavlm_la2019.pt"
+)
+_DEFAULT_LFCC_LA_CKPT = (
     _REPO_ROOT
     / "replay-cnn-baseline"
     / "experiments"
@@ -85,11 +94,16 @@ _DEFAULT_LA_CKPT = (
     / "best_lfcc_la2019.pt"
 )
 
-# Off by default: LFCC-LA is strong on ASVspoof LA but scores ~1.0 on browser-mic
-# speech (domain mismatch), same failure mode as mixed-LFCC replay earlier.
+# wavlm | lfcc — WavLM is strong on ASVspoof LA but saturates (~1.0) on browser mics.
+# Prefer lfcc when LA_HARD_GATE=true for laptop/app verify; use wavlm soft-only for experiments.
+LA_BACKEND = os.getenv("LA_BACKEND", "lfcc").strip().lower()
+_DEFAULT_LA_CKPT = (
+    _DEFAULT_LFCC_LA_CKPT if LA_BACKEND == "lfcc" else _DEFAULT_WAVLM_LA_CKPT
+)
+
+# Soft by default: scores always returned when enabled; hard-block only if LA_HARD_GATE.
 LA_ENABLED = os.getenv("LA_ENABLED", "false").lower() in {"1", "true", "yes"}
-# When enabled, scores are always returned; only hard-block if this is true
-# (use for lab ASVspoof files — unsafe for laptop/browser verify).
+# When enabled, scores are always returned; only hard-block if this is true.
 LA_HARD_GATE = os.getenv("LA_HARD_GATE", "false").lower() in {"1", "true", "yes"}
 LA_CHECKPOINT = Path(os.getenv("LA_CHECKPOINT", str(_DEFAULT_LA_CKPT)))
 _raw_la_thr = os.getenv("LA_THRESHOLD", "").strip()
