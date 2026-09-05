@@ -1,4 +1,4 @@
-"""Cascade: inverted-Mel replay + optional LFCC-LA synthetic scores."""
+"""Cascade: inverted-Mel replay + optional LA synthetic scores (WavLM or LFCC)."""
 
 from __future__ import annotations
 
@@ -25,10 +25,9 @@ def score_anti_spoof(
     device: str = DEVICE,
 ) -> dict:
     """
-    Speech gate + inverted-Mel replay, then optional LFCC-LA scoring.
+    Speech gate + inverted-Mel replay, then optional LA scoring (WavLM+ASP default).
 
-    Final decision is driven by inverted-Mel unless ``LA_HARD_GATE`` is on
-    (LFCC-LA over-fires ~1.0 on browser-mic speech).
+    Final decision is driven by inverted-Mel unless ``LA_HARD_GATE`` is on.
 
     Decision: NO_SPEECH | REPLAY | SYNTHETIC | UNCERTAIN | LIVE.
     """
@@ -65,7 +64,7 @@ def score_anti_spoof(
             "la": la_stage,
         }
 
-    # Hard LA gate only when explicitly enabled (lab / ASVspoof files).
+    # Hard LA gate only when explicitly enabled.
     if (
         LA_HARD_GATE
         and la is not None

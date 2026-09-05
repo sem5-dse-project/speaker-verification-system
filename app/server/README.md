@@ -35,6 +35,11 @@ Override with `REPLAY_CHECKPOINT` / `REPLAY_THRESHOLD` / `REPLAY_MARGIN` (or `RE
 Banding: `score < t_low` → LIVE, `t_low ≤ score < t_high` → UNCERTAIN (re-record), `score ≥ t_high` → REPLAY.  
 Default margin is `0.10` around the checkpoint EER threshold.
 
+Optional **LA (synthetic)** stage after replay: default backend is **WavLM-Base + ASP**
+(`experiments/wavlm_la2019/.../best_wavlm_la2019.pt`). Set `LA_ENABLED=true`.  
+Hard-block with `LA_HARD_GATE=true`. Rollback: `LA_BACKEND=lfcc` + LFCC checkpoint.  
+Needs `transformers` and a local Hugging Face cache of `microsoft/wavlm-base` (or internet on first load).
+
 Interactive docs: `http://localhost:8000/docs`
 
 ## Setup
