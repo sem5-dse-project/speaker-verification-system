@@ -17,8 +17,9 @@ Joint **speaker verification + anti-spoof** metrics using the official SASV 2022
 | `01_setup_and_metrics.ipynb` | Paths, protocol, metric smoke test |
 | `02_ecapa_only_sasv.ipynb` | ECAPA cosine only → SASV/SV/SPF EER |
 | `03_ecapa_plus_cm_sasv.ipynb` | ECAPA + LFCC/WavLM score-sum |
+| `04_eval_locked.ipynb` | Locked **eval** for both systems (report once) |
 
-Always start with `SMOKE = True` (500 trials).
+Always start with `SMOKE = True` (500 trials) on **dev**.
 
 ## Metrics
 
@@ -28,7 +29,7 @@ Always start with `SMOKE = True` (500 trials).
 | SPF-EER | target vs spoof |
 | SASV-EER | target vs nontarget+spoof |
 
-Tune on **dev**; report **eval** once.
+Tune on **dev** (`02` / `03`); report **eval** once via `04_eval_locked.ipynb` (no further tuning).
 
 ## Outputs
 
@@ -36,6 +37,8 @@ Under `runs/`:
 
 - `ecapa_only_dev/metrics_dev.json`
 - `ecapa_plus_lfcc_dev/metrics_dev.json`
+- `ecapa_only_eval/metrics_eval.json`
+- `ecapa_plus_lfcc_eval/metrics_eval.json`
 
 ## Note
 
