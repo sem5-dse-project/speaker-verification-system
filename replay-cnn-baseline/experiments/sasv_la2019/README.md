@@ -20,6 +20,7 @@ Joint **speaker verification + anti-spoof** metrics using the official SASV 2022
 | `04_eval_locked.ipynb` | Locked **eval** for ECAPA / ECAPA+LFCC |
 | `05_ecapa_plus_wavlm_dev.ipynb` | ECAPA + WavLM score-sum on **dev** |
 | `06_ecapa_plus_wavlm_eval.ipynb` | Locked **eval** for ECAPA + WavLM |
+| `07_lfcc_weighted_fusion.ipynb` | Tune `α` for `α·s_asv+(1−α)·s_cm` on **dev**, lock on **eval** |
 
 Always start with `SMOKE = True` (500 trials) on **dev**.
 
@@ -31,7 +32,7 @@ Always start with `SMOKE = True` (500 trials) on **dev**.
 | SPF-EER | target vs spoof |
 | SASV-EER | target vs nontarget+spoof |
 
-Tune on **dev** (`02` / `03` / `05`); report **eval** once via `04` (LFCC) and/or `06` (WavLM) — no further tuning.
+Tune on **dev** (`02` / `03` / `05` / `07`); report **eval** once via `04` / `06` / locked α in `07` — no further tuning.
 
 ## Outputs
 
@@ -43,6 +44,7 @@ Under `runs/`:
 - `ecapa_only_eval/metrics_eval.json`
 - `ecapa_plus_lfcc_eval/metrics_eval.json`
 - `ecapa_plus_wavlm_eval/metrics_eval.json`
+- `ecapa_plus_lfcc_weighted_dev/` / `ecapa_plus_lfcc_weighted_eval/` (notebook `07`)
 
 ## Note
 
