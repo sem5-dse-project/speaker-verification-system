@@ -98,3 +98,5 @@ lightning_logs/
 
 # Jupyter
 .ipynb_checkpoints/
+
+SASVC2022_Baseline/
