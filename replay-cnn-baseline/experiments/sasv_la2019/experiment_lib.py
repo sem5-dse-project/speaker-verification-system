@@ -77,6 +77,60 @@ def ensure_server_on_path(server_root: Path | None = None) -> Path:
     return root
 
 
+def patch_speechbrain_windows_lazy_import() -> None:
+    """Avoid SpeechBrain LazyModule blowing up on Windows + transformers.
+
+    SpeechBrain only skips inspect-triggered imports when the frame path ends
+    with ``/inspect.py``. On Windows it is ``\\inspect.py``, so importing
+    ``transformers`` (which uses ``inspect``) can force-load optional
+    ``speechbrain.integrations.k2_fsa`` and fail with a misleading ImportError.
+    """
+    try:
+        from speechbrain.utils.importutils import LazyModule
+    except ImportError:
+        return
+    if getattr(LazyModule.ensure_module, "_sv_win_patch", False):
+        return
+
+    import importlib
+    import inspect as _inspect
+    import warnings
+
+    def ensure_module(self, stacklevel: int):  # type: ignore[no-untyped-def]
+        importer_frame = None
+        try:
+            importer_frame = _inspect.getframeinfo(sys._getframe(stacklevel + 1))
+        except AttributeError:
+            warnings.warn(
+                "Failed to inspect frame to check if we should ignore "
+                "importing a module lazily. This relies on a CPython "
+                "implementation detail, report an issue if you see this with "
+                "standard Python and include your version number."
+            )
+
+        if importer_frame is not None:
+            # SpeechBrain upstream only checks "/inspect.py" (POSIX).
+            filename = importer_frame.filename.replace("\\", "/")
+            if filename.endswith("/inspect.py"):
+                raise AttributeError()
+
+        if self.lazy_module is None:
+            try:
+                if self.package is None:
+                    self.lazy_module = importlib.import_module(self.target)
+                else:
+                    self.lazy_module = importlib.import_module(
+                        f".{self.target}", self.package
+                    )
+            except Exception as e:
+                raise ImportError(f"Lazy import of {repr(self)} failed") from e
+
+        return self.lazy_module
+
+    ensure_module._sv_win_patch = True  # type: ignore[attr-defined]
+    LazyModule.ensure_module = ensure_module  # type: ignore[method-assign]
+
+
 def resolve_audio_path(la_root: Path, split: str, utt_id: str) -> Path:
     flac = Path(la_root) / AUDIO_DIR[split] / f"{utt_id}.flac"
     wav = flac.with_suffix(".wav")

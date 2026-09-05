@@ -19,6 +19,7 @@ from experiment_lib import (
     ensure_server_on_path,
     l2_normalize,
     load_waveform,
+    patch_speechbrain_windows_lazy_import,
     read_enroll_map,
     read_trials,
     resolve_audio_path,
@@ -28,6 +29,7 @@ from experiment_lib import (
 
 def load_app_ecapa(device: str = "cpu"):
     ensure_server_on_path()
+    patch_speechbrain_windows_lazy_import()
     from ml_server.ecapa import load_ecapa_encoder
 
     return load_ecapa_encoder(device=device)

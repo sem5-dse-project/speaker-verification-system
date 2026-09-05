@@ -66,6 +66,12 @@ class WavLMSpoofDetector(nn.Module):
         try:
             from transformers import WavLMModel
         except ImportError as exc:  # pragma: no cover
+            # Transformers 5.x + SpeechBrain on Windows can raise ImportError
+            # while resolving optional speechbrain.k2 during inspect(); re-raise
+            # that case instead of claiming transformers is missing.
+            msg = str(exc).lower()
+            if "k2" in msg or "speechbrain" in msg:
+                raise
             raise ImportError(
                 "Install transformers for WavLM LA: pip install transformers"
             ) from exc
