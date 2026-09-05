@@ -35,6 +35,8 @@ Always start with `SMOKE = True` (500 trials) on **dev**.
 
 Tune on **dev** (`02` / `03` / `05` / `07` / `08`); report **eval** once via `04` / `06` / locked settings in `07`–`08` — no further tuning.
 
+**Locked numbers and comparison tables:** see [`results.md`](results.md).
+
 ## Outputs
 
 Under `runs/`:
