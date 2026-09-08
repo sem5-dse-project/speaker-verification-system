@@ -67,6 +67,9 @@ checkpoints/
 # AASIST zero-shot experiment (weights + local scaffolding; keep out of git)
 replay-cnn-baseline/experiments/aasist_zeroshot/
 
+# Official AASIST clone (local only; pretrained weights)
+aasist/
+
 # ASSERT SENet34 PA zero-shot experiment (weights + local scaffolding)
 replay-cnn-baseline/experiments/assert_senet34_pa/
 
