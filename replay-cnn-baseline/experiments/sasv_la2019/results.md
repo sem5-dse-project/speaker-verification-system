@@ -23,42 +23,47 @@ Lower EER is better. Primary number: **SASV-EER**.
 
 ## Main systems (score-sum fusion)
 
-Fusion for CM systems:
+Fusion forms used:
 
 ```text
-s_sasv = s_asv + (1 - P_spoof)
+LFCC / WavLM:  s_sasv = s_asv + (1 - P_spoof)
+AASIST:        s_sasv = s_asv + P_bona   (softmax class 1)
 ```
 
 - `s_asv` = ECAPA cosine (enrol model vs test)
-- `P_spoof` = LFCC or WavLM LA detector from the app
+- CM = LFCC, WavLM, or official AASIST (`aasist/` clone)
 
 ### Dev
 
 | System | Notebook | SASV-EER (%) | SV-EER (%) | SPF-EER (%) |
 |--------|----------|-------------:|-----------:|------------:|
 | ECAPA only | `02` | 15.23 | 1.25 | 17.91 |
-| ECAPA + LFCC | `03` | **1.14** | 2.10 | **0.09** |
+| ECAPA + LFCC | `03` | 1.14 | 2.10 | **0.09** |
 | ECAPA + WavLM | `05` | 7.35 | 11.86 | 3.84 |
+| **ECAPA + AASIST** | `09` | **0.74** | 1.35 | 0.13 |
 
 ### Eval (locked — use this for reporting)
 
 | System | Notebook | SASV-EER (%) | SV-EER (%) | SPF-EER (%) |
 |--------|----------|-------------:|-----------:|------------:|
-| ECAPA only | `04` | 20.67 | **0.76** | 27.05 |
-| **ECAPA + LFCC** | `04` | **7.13** | 1.56 | 9.71 |
-| ECAPA + WavLM | `06` | 12.25 | 14.69 | **6.54** |
+| ECAPA only | `04` | 20.67 | 0.76 | 27.05 |
+| ECAPA + LFCC | `04` | 7.13 | 1.56 | 9.71 |
+| ECAPA + WavLM | `06` | 12.25 | 14.69 | 6.54 |
+| **ECAPA + AASIST** | `10` | **1.14** | **0.82** | **1.39** |
 
 ### What this means
 
 - **ECAPA alone** verifies speakers well (low SV-EER) but is open to spoofs (high SPF / SASV).
-- **LFCC fusion** is the best overall system: SASV-EER drops from ~20.7% → **~7.1%** on eval.
-- **WavLM fusion** rejects spoofs a bit better than LFCC on eval (SPF 6.5% vs 9.7%) but **hurts speaker verification** (SV ~14.7%), so joint SASV is worse than LFCC.
+- **LFCC fusion** is a strong **lightweight** option: SASV-EER ~20.7% → **~7.1%** on eval.
+- **WavLM fusion** can help SPF a bit vs LFCC but **hurts SV** (~14.7%), so joint SASV is worse.
+- **AASIST fusion** is the best overall: SASV-EER **~1.14%** on eval, with healthy SV and SPF.
 
-**Best main system: ECAPA + LFCC score-sum (~7.13% eval SASV-EER).**
+**Best system: ECAPA + AASIST score-sum (~1.14% eval SASV-EER).**  
+**Best lightweight CM: ECAPA + LFCC (~7.13% eval SASV-EER).**
 
 ## Fusion ablations (LFCC scores only)
 
-These reuse saved `s_asv` / `s_cm` CSVs (no new GPU scoring).  
+These reuse saved LFCC `s_asv` / `s_cm` CSVs (no new GPU scoring).  
 Tuned on **dev**, locked on **eval**.
 
 ### Weighted sum (`07`)
@@ -107,10 +112,11 @@ Other calibrated methods on **eval** (all worse than raw sum):
 | System | SASV-EER (%) | SV-EER (%) | SPF-EER (%) | Role |
 |--------|-------------:|-----------:|------------:|------|
 | ECAPA only | 20.67 | 0.76 | 27.05 | ASV baseline |
-| **ECAPA + LFCC raw sum** | **7.13** | 1.56 | 9.71 | **Main result** |
+| ECAPA + LFCC raw sum | 7.13 | 1.56 | 9.71 | Lightweight CM |
 | ECAPA + LFCC weighted (α=0.65) | 7.59 | 1.16 | 10.20 | Ablation |
 | ECAPA + LFCC calibrated (locked) | 8.14 | 1.10 | 10.98 | Ablation |
 | ECAPA + WavLM raw sum | 12.25 | 14.69 | 6.54 | Ablation |
+| **ECAPA + AASIST sum** | **1.14** | **0.82** | **1.39** | **Best / vs B1-v2** |
 
 ## vs published SASV 2022 (eval, approximate)
 
@@ -120,18 +126,33 @@ Other calibrated methods on **eval** (all worse than raw sum):
 | **Our ECAPA alone** | **~20.7** |
 | Official Baseline2 (DNN fusion) | ~6.5 |
 | **Our ECAPA + LFCC sum** | **~7.1** |
-| Official Baseline1-v2 (ECAPA + AASIST, calibrated sum) | ~1.7 |
+| Official Baseline1-v2 (ECAPA + AASIST) | ~1.7 |
+| **Our ECAPA + AASIST sum** | **~1.14** |
 
-Our ECAPA is slightly better than the published ECAPA-alone number.  
-Our LFCC score-sum is near **B2** level, not **B1-v2** (AASIST is a stronger CM).
+Our ECAPA alone is slightly better than the published ECAPA-alone number.  
+Our ECAPA + AASIST score-sum is in the **B1-v2** ballpark (slightly better here; small gaps from ECAPA checkpoint / score details are expected).  
+LFCC remains a lighter CM near **B2** level.
+
+## CM-alone note (LA spoof EER, not SASV)
+
+On ASVspoof 2019 LA **dev** (bona vs spoof only):
+
+| CM | Oracle EER (%) |
+|----|---------------:|
+| LFCC CNN | ~0.11 |
+| WavLM-Base + ASP (frozen) | ~7.63 |
+| AASIST (official eval claim) | ~0.83 |
+
+SASV needs the CM **and** ECAPA together; CM-alone EER ≠ SASV-EER.
 
 ## Conclusions
 
-1. Adding an LA CM is necessary: ECAPA alone ~21% SASV-EER → LFCC fusion ~7%.
-2. **LFCC score-sum is the best system in this folder.**
-3. WavLM under simple score-sum is not better for joint SASV (SV collapses).
-4. Extra fusion (weighted α, Platt calibration) overfits **dev** and does not beat raw sum on **eval**.
-5. Numbers are for **lab ASVspoof LA** flacs, not browser / phone mics.
+1. Adding an LA CM is necessary: ECAPA alone ~21% SASV-EER on eval.
+2. **Best joint system: ECAPA + AASIST (~1.14% eval SASV-EER)** — competitive with published B1-v2 (~1.7%).
+3. **Best lightweight system: ECAPA + LFCC (~7.13%)** — no AASIST dependency.
+4. WavLM under simple score-sum is not better for joint SASV (SV collapses).
+5. Extra LFCC fusion (weighted α, Platt calibration) overfits **dev** and does not beat LFCC raw sum on **eval**.
+6. Numbers are for **lab ASVspoof LA** flacs, not browser / phone mics.
 
 ## Where the numbers live
 
@@ -140,5 +161,6 @@ Our LFCC score-sum is near **B2** level, not **B1-v2** (AASIST is a stronger CM)
 | ECAPA only | `runs/ecapa_only_{dev,eval}/metrics_*.json` |
 | ECAPA + LFCC | `runs/ecapa_plus_lfcc_{dev,eval}/metrics_*.json` |
 | ECAPA + WavLM | `runs/ecapa_plus_wavlm_{dev,eval}/metrics_*.json` |
+| ECAPA + AASIST | `runs/ecapa_plus_aasist_{dev,eval}/metrics_*.json` |
 | Weighted α | `runs/ecapa_plus_lfcc_weighted_eval/locked_alpha.json` |
 | Calibrated | `runs/ecapa_plus_lfcc_calibrated/locked_eval.json` |
