@@ -117,7 +117,7 @@ def save_weighted_run(
             )
     payload = {
         **metrics,
-        "system": "ecapa_plus_lfcc_weighted",
+        "system": metrics.get("system", "ecapa_plus_lfcc_weighted"),
         "split": split,
         "fusion": "alpha * s_asv + (1 - alpha) * s_cm",
         "alpha": float(alpha),
