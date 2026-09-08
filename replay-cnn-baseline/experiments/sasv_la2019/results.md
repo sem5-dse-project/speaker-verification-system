@@ -28,6 +28,7 @@ Fusion forms used:
 ```text
 LFCC / WavLM:  s_sasv = s_asv + (1 - P_spoof)
 AASIST:        s_sasv = s_asv + P_bona   (softmax class 1)
+Weighted:      s_sasv = α · s_asv + (1 − α) · s_cm
 ```
 
 - `s_asv` = ECAPA cosine (enrol model vs test)
@@ -40,7 +41,8 @@ AASIST:        s_sasv = s_asv + P_bona   (softmax class 1)
 | ECAPA only | `02` | 15.23 | 1.25 | 17.91 |
 | ECAPA + LFCC | `03` | 1.14 | 2.10 | **0.09** |
 | ECAPA + WavLM | `05` | 7.35 | 11.86 | 3.84 |
-| **ECAPA + AASIST** | `09` | **0.74** | 1.35 | 0.13 |
+| ECAPA + AASIST sum | `09` | 0.74 | 1.35 | 0.13 |
+| ECAPA + AASIST weighted (α=0.30) | `11` | **0.74** | 1.35 | **0.07** |
 
 ### Eval (locked — use this for reporting)
 
@@ -49,17 +51,53 @@ AASIST:        s_sasv = s_asv + P_bona   (softmax class 1)
 | ECAPA only | `04` | 20.67 | 0.76 | 27.05 |
 | ECAPA + LFCC | `04` | 7.13 | 1.56 | 9.71 |
 | ECAPA + WavLM | `06` | 12.25 | 14.69 | 6.54 |
-| **ECAPA + AASIST** | `10` | **1.14** | **0.82** | **1.39** |
+| ECAPA + AASIST sum | `10` | 1.14 | 0.82 | 1.39 |
+| **ECAPA + AASIST weighted (α=0.30)** | `11` | **0.83** | 0.87 | **0.79** |
 
 ### What this means
 
 - **ECAPA alone** verifies speakers well (low SV-EER) but is open to spoofs (high SPF / SASV).
 - **LFCC fusion** is a strong **lightweight** option: SASV-EER ~20.7% → **~7.1%** on eval.
 - **WavLM fusion** can help SPF a bit vs LFCC but **hurts SV** (~14.7%), so joint SASV is worse.
-- **AASIST fusion** is the best overall: SASV-EER **~1.14%** on eval, with healthy SV and SPF.
+- **AASIST raw sum** reaches ~**1.14%** SASV-EER on eval (beats published B1-v2 ~1.7%).
+- **AASIST weighted (α=0.30)** is best overall: ~**0.83%** SASV-EER on eval.
 
-**Best system: ECAPA + AASIST score-sum (~1.14% eval SASV-EER).**  
+**Best system: ECAPA + AASIST weighted α=0.30 (~0.83% eval SASV-EER).**  
 **Best lightweight CM: ECAPA + LFCC (~7.13% eval SASV-EER).**
+
+## AASIST post-fusion ablations (`11` / `12`)
+
+Reuse saved AASIST / LFCC score CSVs (no GPU). Tuned on **dev**, locked on **eval**.
+
+### Weighted AASIST (`11`)
+
+Locked **α = 0.30** (min SASV-EER on dev).
+
+| System | Split | SASV-EER (%) | SV-EER (%) | SPF-EER (%) |
+|--------|-------|-------------:|-----------:|------------:|
+| AASIST raw sum | Dev | 0.74 | 1.35 | 0.13 |
+| Weighted α=0.30 | Dev | 0.74 | 1.35 | 0.07 |
+| AASIST raw sum | Eval | 1.14 | 0.82 | 1.39 |
+| **Weighted α=0.30** | Eval | **0.83** | 0.87 | **0.79** |
+
+Unlike LFCC weighting, AASIST **α helps on eval**.
+
+### AASIST + LFCC CM ensemble (`12`)
+
+```text
+s_cm = β · s_cm_aasist + (1 − β) · s_cm_lfcc
+s_sasv = s_asv + s_cm
+```
+
+Locked **β = 0.70** (sum mode).
+
+| System | Split | SASV-EER (%) | SV-EER (%) | SPF-EER (%) |
+|--------|-------|-------------:|-----------:|------------:|
+| AASIST raw sum | Eval | **1.14** | 0.82 | 1.39 |
+| Ensemble β=0.70 | Eval | 1.15 | 0.97 | 1.30 |
+| LFCC raw sum | Eval | 7.13 | 1.56 | 9.71 |
+
+Ensemble ≈ AASIST alone on eval — **no gain**.
 
 ## Fusion ablations (LFCC scores only)
 
@@ -116,7 +154,9 @@ Other calibrated methods on **eval** (all worse than raw sum):
 | ECAPA + LFCC weighted (α=0.65) | 7.59 | 1.16 | 10.20 | Ablation |
 | ECAPA + LFCC calibrated (locked) | 8.14 | 1.10 | 10.98 | Ablation |
 | ECAPA + WavLM raw sum | 12.25 | 14.69 | 6.54 | Ablation |
-| **ECAPA + AASIST sum** | **1.14** | **0.82** | **1.39** | **Best / vs B1-v2** |
+| ECAPA + AASIST sum | 1.14 | 0.82 | 1.39 | vs B1-v2 |
+| AASIST+LFCC ensemble (β=0.70) | 1.15 | 0.97 | 1.30 | Ablation |
+| **ECAPA + AASIST weighted (α=0.30)** | **0.83** | 0.87 | **0.79** | **Best** |
 
 ## vs published SASV 2022 (eval, approximate)
 
@@ -128,9 +168,10 @@ Other calibrated methods on **eval** (all worse than raw sum):
 | **Our ECAPA + LFCC sum** | **~7.1** |
 | Official Baseline1-v2 (ECAPA + AASIST) | ~1.7 |
 | **Our ECAPA + AASIST sum** | **~1.14** |
+| **Our ECAPA + AASIST weighted (α=0.30)** | **~0.83** |
 
 Our ECAPA alone is slightly better than the published ECAPA-alone number.  
-Our ECAPA + AASIST score-sum is in the **B1-v2** ballpark (slightly better here; small gaps from ECAPA checkpoint / score details are expected).  
+AASIST score-sum and weighted fusion both beat **B1-v2 (~1.7%)** on this setup.  
 LFCC remains a lighter CM near **B2** level.
 
 ## CM-alone note (LA spoof EER, not SASV)
@@ -148,11 +189,12 @@ SASV needs the CM **and** ECAPA together; CM-alone EER ≠ SASV-EER.
 ## Conclusions
 
 1. Adding an LA CM is necessary: ECAPA alone ~21% SASV-EER on eval.
-2. **Best joint system: ECAPA + AASIST (~1.14% eval SASV-EER)** — competitive with published B1-v2 (~1.7%).
-3. **Best lightweight system: ECAPA + LFCC (~7.13%)** — no AASIST dependency.
-4. WavLM under simple score-sum is not better for joint SASV (SV collapses).
-5. Extra LFCC fusion (weighted α, Platt calibration) overfits **dev** and does not beat LFCC raw sum on **eval**.
-6. Numbers are for **lab ASVspoof LA** flacs, not browser / phone mics.
+2. **Best joint system: ECAPA + AASIST weighted α=0.30 (~0.83% eval SASV-EER)** — better than B1-v2 (~1.7%).
+3. AASIST raw sum (~1.14%) already beats B1-v2; weighting improves further on eval.
+4. **Best lightweight system: ECAPA + LFCC (~7.13%)** — no AASIST dependency.
+5. WavLM under simple score-sum is not better for joint SASV (SV collapses).
+6. LFCC α / Platt calibration and AASIST+LFCC ensemble do **not** beat their simpler baselines on eval.
+7. Numbers are for **lab ASVspoof LA** flacs, not browser / phone mics.
 
 ## Where the numbers live
 
@@ -162,5 +204,7 @@ SASV needs the CM **and** ECAPA together; CM-alone EER ≠ SASV-EER.
 | ECAPA + LFCC | `runs/ecapa_plus_lfcc_{dev,eval}/metrics_*.json` |
 | ECAPA + WavLM | `runs/ecapa_plus_wavlm_{dev,eval}/metrics_*.json` |
 | ECAPA + AASIST | `runs/ecapa_plus_aasist_{dev,eval}/metrics_*.json` |
-| Weighted α | `runs/ecapa_plus_lfcc_weighted_eval/locked_alpha.json` |
-| Calibrated | `runs/ecapa_plus_lfcc_calibrated/locked_eval.json` |
+| AASIST weighted | `runs/ecapa_plus_aasist_weighted/locked_eval.json` |
+| AASIST+LFCC ensemble | `runs/ecapa_plus_aasist_lfcc_ens/locked_eval.json` |
+| LFCC weighted α | `runs/ecapa_plus_lfcc_weighted_eval/locked_alpha.json` |
+| LFCC calibrated | `runs/ecapa_plus_lfcc_calibrated/locked_eval.json` |
