@@ -35,12 +35,15 @@ Override with `REPLAY_CHECKPOINT` / `REPLAY_THRESHOLD` / `REPLAY_MARGIN` (or `RE
 Banding: `score < t_low` → LIVE, `t_low ≤ score < t_high` → UNCERTAIN (re-record), `score ≥ t_high` → REPLAY.  
 Default margin is `0.10` around the checkpoint EER threshold.
 
-Optional **LA (synthetic)** stage after replay: default backend is **LFCC-LA**
-(safer for browser-mic hard gating). Set `LA_ENABLED=true`.  
-`LA_BACKEND=wavlm` loads WavLM+ASP (`experiments/wavlm_la2019`) — strong on ASVspoof LA
-(~7.6% EER) but tends to score **~1.0 on laptop/browser mics**; use with `LA_HARD_GATE=false`
-to observe scores without blocking. WavLM scores the **full pre-VAD clip** (VAD crops also
-false-trigger); replay still uses VAD speech. Needs `transformers` + HF cache of `microsoft/wavlm-base`.
+Optional **LA (synthetic)** stage after replay. Set `LA_ENABLED=true`.
+
+| `LA_BACKEND` | Model | Notes |
+|--------------|--------|--------|
+| **`aasist`** (default) | Official Clova AASIST | Clone `aasist/` at repo root with `models/weights/AASIST.pth`. Best on ASVspoof LA lab; calibrate before `LA_HARD_GATE=true` on browser mics. |
+| `lfcc` | LFCC CNN (`experiments/lfcc_la2019`) | Lightweight; can saturate (~1.0) on laptop/browser mics. |
+| `wavlm` | WavLM+ASP (`experiments/wavlm_la2019`) | Strong on ASVspoof LA (~7.6% EER) but often **~1.0 on browser mics**; soft only. Needs `transformers` + HF `microsoft/wavlm-base`. |
+
+LA scores the **full pre-VAD clip** (VAD crops false-trigger SYNTHETIC); replay still uses VAD speech. Override paths with `AASIST_ROOT` / `LA_CHECKPOINT`, banding with `LA_THRESHOLD` / `LA_MARGIN` (AASIST default center **0.5**).
 
 Interactive docs: `http://localhost:8000/docs`
 

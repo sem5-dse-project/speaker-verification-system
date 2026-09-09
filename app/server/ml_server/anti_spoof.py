@@ -26,11 +26,11 @@ def score_anti_spoof(
     la_waveform=None,
 ) -> dict:
     """
-    Speech gate + inverted-Mel replay, then optional LA scoring (WavLM+ASP default).
+    Speech gate + inverted-Mel replay, then optional LA scoring (AASIST / LFCC / WavLM).
 
     ``waveform`` is typically VAD speech (good for replay).
-    ``la_waveform`` should be the full pre-VAD clip for WavLM — VAD crops push
-    bona fide LA scores to ~1.0 (false SYNTHETIC).
+    ``la_waveform`` should be the full pre-VAD clip for LA — VAD crops push
+    bona fide LA scores toward ~1.0 (false SYNTHETIC).
 
     Final decision is driven by inverted-Mel unless ``LA_HARD_GATE`` is on.
 

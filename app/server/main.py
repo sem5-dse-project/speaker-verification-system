@@ -143,7 +143,7 @@ async def replay_detect(
     la_threshold: Annotated[float | None, Form()] = None,
 ) -> ReplayDetectResponse:
     """
-    Anti-spoof cascade: inverted-Mel replay, then optional LA synthetic (WavLM or LFCC).
+    Anti-spoof cascade: inverted-Mel replay, then optional LA synthetic (AASIST / LFCC / WavLM).
 
     decision: LIVE | UNCERTAIN | REPLAY | SYNTHETIC | NO_SPEECH.
     Express rejects REPLAY/SYNTHETIC, asks re-record on UNCERTAIN/NO_SPEECH,

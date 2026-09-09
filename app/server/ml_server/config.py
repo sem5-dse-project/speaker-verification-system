@@ -74,7 +74,7 @@ _raw_t_high = os.getenv("REPLAY_T_HIGH", "").strip()
 REPLAY_T_LOW = float(_raw_t_low) if _raw_t_low else None
 REPLAY_T_HIGH = float(_raw_t_high) if _raw_t_high else None
 
-# ASVspoof 2019 LA (synthetic) — WavLM+ASP by default; LFCC CNN via LA_BACKEND=lfcc.
+# ASVspoof 2019 LA (synthetic): lfcc | wavlm | aasist
 _DEFAULT_WAVLM_LA_CKPT = (
     _REPO_ROOT
     / "replay-cnn-baseline"
@@ -93,13 +93,19 @@ _DEFAULT_LFCC_LA_CKPT = (
     / "lfcc_la"
     / "best_lfcc_la2019.pt"
 )
+# Official Clova AASIST clone (gitignored at repo root)
+AASIST_ROOT = Path(os.getenv("AASIST_ROOT", str(_REPO_ROOT / "aasist")))
+_DEFAULT_AASIST_WEIGHT = AASIST_ROOT / "models" / "weights" / "AASIST.pth"
 
-# wavlm | lfcc — WavLM is strong on ASVspoof LA but saturates (~1.0) on browser mics.
-# Prefer lfcc when LA_HARD_GATE=true for laptop/app verify; use wavlm soft-only for experiments.
-LA_BACKEND = os.getenv("LA_BACKEND", "lfcc").strip().lower()
-_DEFAULT_LA_CKPT = (
-    _DEFAULT_LFCC_LA_CKPT if LA_BACKEND == "lfcc" else _DEFAULT_WAVLM_LA_CKPT
-)
+# lfcc | wavlm | aasist — WavLM/LFCC often saturate on browser mics; AASIST is best on lab LA.
+# Prefer LA_HARD_GATE=false until calibrated on app/browser audio.
+LA_BACKEND = os.getenv("LA_BACKEND", "aasist").strip().lower()
+if LA_BACKEND == "lfcc":
+    _DEFAULT_LA_CKPT = _DEFAULT_LFCC_LA_CKPT
+elif LA_BACKEND == "wavlm":
+    _DEFAULT_LA_CKPT = _DEFAULT_WAVLM_LA_CKPT
+else:
+    _DEFAULT_LA_CKPT = _DEFAULT_AASIST_WEIGHT
 
 # Soft by default: scores always returned when enabled; hard-block only if LA_HARD_GATE.
 LA_ENABLED = os.getenv("LA_ENABLED", "false").lower() in {"1", "true", "yes"}
