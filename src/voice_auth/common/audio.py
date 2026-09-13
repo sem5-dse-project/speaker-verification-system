@@ -89,22 +89,45 @@ def preprocess_audio(
     return wave, target_sr
 
 
-def load_audio_placeholder(path: Path, target_sr: int = DEFAULT_SAMPLE_RATE) -> tuple[Waveform, int]:
+def load_audio(path: Path, target_sr: int = DEFAULT_SAMPLE_RATE) -> tuple[Waveform, int]:
     """
-    Placeholder audio loader.
+    Load an audio file from disk and preprocess it (mono, float32, resampled).
+
+    Requires the ``audio`` extra (``pip install -e ".[audio]"``) for ``soundfile``.
+
+    Args:
+        path: Path to a WAV/FLAC/OGG file readable by ``soundfile``.
+        target_sr: Target sample rate (default 16000).
+
+    Returns:
+        Tuple of ``(preprocessed_waveform, target_sr)``.
 
     Raises:
         FileNotFoundError: If the path does not exist.
-        NotImplementedError: Always, until a real backend (soundfile/librosa) is wired.
+        ImportError: If ``soundfile`` is not installed.
+        RuntimeError: If the file cannot be decoded.
     """
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Audio file not found: {path}")
-    raise NotImplementedError(
-        "Audio loading is not implemented yet. "
-        "Install soundfile/librosa and replace this placeholder "
-        f"(requested: {path}, target_sr={target_sr})."
-    )
+
+    try:
+        import soundfile as sf
+    except ImportError as exc:
+        raise ImportError(
+            "Loading audio requires 'soundfile'. Install it with "
+            "'pip install -e \".[audio]\"' or 'pip install soundfile'."
+        ) from exc
+
+    try:
+        data, sample_rate = sf.read(str(path), dtype="float32", always_2d=False)
+    except Exception as exc:
+        raise RuntimeError(f"Failed to decode audio file: {path}") from exc
+
+    # soundfile returns [num_samples] or [num_samples, channels]; our convention is [channels, num_samples]
+    if data.ndim == 2:
+        data = data.T
+    return preprocess_audio(data, sample_rate, target_sr)
 
 
 def l2_normalize(vector: np.ndarray, eps: float = 1e-10) -> np.ndarray:

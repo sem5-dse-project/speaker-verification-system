@@ -6,7 +6,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from voice_auth.common.types import DEFAULT_EMBEDDING_DIM, DEFAULT_QUALITY_DIM, Embedding, QualityVector
+from voice_auth.common.types import (
+    DEFAULT_EMBEDDING_DIM,
+    DEFAULT_QUALITY_DIM,
+    Embedding,
+    QualityVector,
+)
 
 
 def _l2_normalize_torch(x: torch.Tensor, eps: float = 1e-10) -> torch.Tensor:

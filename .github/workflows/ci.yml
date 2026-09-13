@@ -97,3 +97,45 @@ jobs:
 
       - name: Run unit tests
         run: pytest
+
+  root-tests:
+    name: Root package (pytest + ruff/black)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install system audio libs
+        timeout-minutes: 5
+        run: |
+          set -euxo pipefail
+          echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
+          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+            sudo sed -i 's|URIs: mirror+file:/etc/apt/apt-mirrors.txt|URIs: http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources
+          fi
+          echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-ci-retries
+          echo 'Acquire::http::Timeout "30";' | sudo tee -a /etc/apt/apt.conf.d/80-ci-retries
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libsndfile1
+
+      - name: Install Python dependencies (CPU torch)
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev,audio]"
+
+      - name: Run unit tests
+        run: pytest
+
+      - name: Lint (ruff)
+        run: ruff check src tests scripts
+
+      - name: Format check (black)
+        run: black --check src tests scripts

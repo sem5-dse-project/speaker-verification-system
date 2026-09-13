@@ -69,3 +69,39 @@ module.exports = {
   sampleIndexFromName,
   toTimestampMs,
 }
+
+const collectionStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const label = String(req.body?.label || 'live').toLowerCase()
+    const safeLabel = label === 'replay' ? 'replay' : 'live'
+    const dir = path.join(__dirname, '..', 'uploads', 'collection', safeLabel)
+    fs.mkdirSync(dir, { recursive: true })
+    cb(null, dir)
+  },
+  filename: (req, file, cb) => {
+    const speakerId = String(req.body?.speaker_id || 'unknown')
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, '')
+    const safeSpeaker = speakerId || 'unknown'
+    cb(null, `${safeSpeaker}_${toTimestampMs()}_${shortId()}.wav`)
+  },
+})
+
+const collectionUpload = multer({
+  storage: collectionStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const looksLikeWav =
+      file.mimetype === 'audio/wav' ||
+      file.mimetype === 'audio/x-wav' ||
+      file.originalname.toLowerCase().endsWith('.wav')
+
+    if (!looksLikeWav) {
+      return cb(new Error('Only WAV audio files are allowed'))
+    }
+
+    return cb(null, true)
+  },
+})
+
+module.exports.collectionUpload = collectionUpload

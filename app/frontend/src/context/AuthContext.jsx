@@ -85,6 +85,7 @@ function AuthProvider({ children }) {
       token: auth?.token || null,
       user: auth?.user || null,
       isAuthenticated: Boolean(auth?.token),
+      isAdmin: auth?.user?.role === 'admin',
       login,
       logout,
     }),

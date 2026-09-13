@@ -1,16 +1,24 @@
 import { useState } from 'react'
-import { AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ShieldCheck } from 'lucide-react'
+import PageShell from '../components/PageShell.jsx'
+import PageHeader from '../components/PageHeader.jsx'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
+import VerificationVerdict from '../components/VerificationVerdict.jsx'
+import VerificationStepper from '../components/VerificationStepper.jsx'
 import api from '../services/api.js'
 import { formatVerificationResult } from '../utils/verificationResult.js'
 
 function Verification() {
-  const navigate = useNavigate()
   const [recording, setRecording] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [statusMessage, setStatusMessage] = useState({ type: '', text: '' })
+  const [statusMessage, setStatusMessage] = useState({
+    type: '',
+    text: '',
+    details: [],
+    decision: null,
+    score: null,
+  })
 
   const handleVerifyVoice = async () => {
     if (!recording?.blob) {
@@ -18,7 +26,7 @@ function Verification() {
     }
 
     setIsSubmitting(true)
-    setStatusMessage({ type: '', text: '' })
+    setStatusMessage({ type: '', text: '', details: [], decision: null, score: null })
 
     try {
       const formData = new FormData()
@@ -37,6 +45,9 @@ function Verification() {
       setStatusMessage({
         type: 'error',
         text: error.response?.data?.message || 'Failed to upload verification sample.',
+        details: [],
+        decision: null,
+        score: null,
       })
     } finally {
       setIsSubmitting(false)
@@ -44,34 +55,22 @@ function Verification() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-100 to-white px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div>
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
-        </div>
-
-        <header className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Voice Verification
-          </h1>
-          <p className="text-base text-slate-600 sm:text-lg">
-            Record your voice and submit it for verification. Quiet clips are rejected, clear replay
-            is blocked, uncertain clips ask you to re-record, then live speech is matched to your
-            enrolled template.
-          </p>
-        </header>
+    <PageShell narrow showNav>
+      <div className="space-y-5 sm:space-y-6">
+        <PageHeader
+          icon={ShieldCheck}
+          title="Voice Verification"
+          subtitle="Record your voice for a multi-stage security scan: speech detection, replay screening, synthetic checks, then speaker matching."
+        />
 
         <Recorder
           onRecordingChange={setRecording}
           onRecorderError={(message) =>
-            setStatusMessage(message ? { type: 'error', text: message } : { type: '', text: '' })
+            setStatusMessage(
+              message
+                ? { type: 'error', text: message, details: [], decision: null, score: null }
+                : { type: '', text: '', details: [], decision: null, score: null },
+            )
           }
         />
 
@@ -80,38 +79,37 @@ function Verification() {
             type="button"
             onClick={handleVerifyVoice}
             disabled={!recording?.blob || isSubmitting}
-            className="w-full py-4 text-lg"
+            className="w-full py-4 text-lg sm:w-full"
           >
-            {isSubmitting ? 'Submitting...' : 'Verify Voice'}
+            {isSubmitting ? 'Scanning voice sample...' : 'Verify Voice'}
           </PrimaryButton>
 
-          <div className="min-h-12 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm">
-            {statusMessage.type === 'success' && (
-              <p className="flex items-center gap-2 text-emerald-700">
-                <CheckCircle2 className="h-4 w-4" />
-                {statusMessage.text}
-              </p>
-            )}
+          {statusMessage.decision && (
+            <VerificationVerdict decision={statusMessage.decision} score={statusMessage.score} />
+          )}
 
-            {statusMessage.type === 'error' && (
-              <p className="flex items-center gap-2 text-rose-700">
-                <AlertCircle className="h-4 w-4" />
-                {statusMessage.text}
+          {!statusMessage.decision && (
+            <div className="status-panel">
+              <p className="text-subtle">
+                Results appear here after verification — including replay and speaker-match stages.
               </p>
-            )}
+            </div>
+          )}
 
-            {statusMessage.type === 'warning' && (
-              <p className="flex items-center gap-2 text-amber-700">
-                <AlertCircle className="h-4 w-4" />
-                {statusMessage.text}
-              </p>
-            )}
-
-            {!statusMessage.type && <p className="text-slate-500">Status messages will appear here.</p>}
-          </div>
+          {statusMessage.details?.length > 0 && (
+            <section className="card">
+              <div className="mb-4">
+                <h2 className="heading-2">Security pipeline</h2>
+                <p className="text-sm text-muted">
+                  Stage-by-stage breakdown of how your sample was evaluated.
+                </p>
+              </div>
+              <VerificationStepper stages={statusMessage.details} />
+            </section>
+          )}
         </div>
       </div>
-    </main>
+    </PageShell>
   )
 }
 

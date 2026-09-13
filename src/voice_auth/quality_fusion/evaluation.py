@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -45,7 +45,4 @@ def score_against_templates(
     embeddings: Sequence[np.ndarray],
 ) -> list[float]:
     """Cosine-score each embedding against its paired enrollment template."""
-    return [
-        cosine_similarity(t, e)
-        for t, e in zip(templates, embeddings, strict=True)
-    ]
+    return [cosine_similarity(t, e) for t, e in zip(templates, embeddings, strict=True)]

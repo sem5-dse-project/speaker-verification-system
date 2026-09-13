@@ -23,8 +23,8 @@ function PasswordStrength({ password }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs">
-        <span className="font-medium text-slate-500">Password strength</span>
-        <span className="font-semibold text-slate-700">{strength.label}</span>
+        <span className="font-medium text-subtle">Password strength</span>
+        <span className="font-semibold text-slate-700 dark:text-slate-300">{strength.label}</span>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
@@ -33,7 +33,7 @@ function PasswordStrength({ password }) {
             key={segment}
             className={[
               'h-1.5 rounded-full transition-colors duration-300',
-              segment <= strength.level ? strength.color : 'bg-slate-200',
+              segment <= strength.level ? strength.color : 'bg-slate-200 dark:bg-slate-700',
             ].join(' ')}
           />
         ))}

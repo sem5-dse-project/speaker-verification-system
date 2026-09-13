@@ -38,7 +38,9 @@ def snr_mix(clean: Waveform, noise: Waveform, snr_db: float) -> Waveform:
     return mixed[np.newaxis, :]
 
 
-def add_gaussian_noise(waveform: Waveform, snr_db: float, rng: np.random.Generator | None = None) -> Waveform:
+def add_gaussian_noise(
+    waveform: Waveform, snr_db: float, rng: np.random.Generator | None = None
+) -> Waveform:
     """Add white Gaussian noise at a target SNR."""
     rng = rng or np.random.default_rng()
     speech = ensure_mono(waveform).astype(np.float32)

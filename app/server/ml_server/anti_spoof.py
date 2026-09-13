@@ -1,4 +1,4 @@
-"""Cascade: inverted-Mel replay + optional LFCC-LA synthetic scores."""
+"""Cascade: inverted-Mel replay + optional LA synthetic scores (WavLM or LFCC)."""
 
 from __future__ import annotations
 
@@ -23,12 +23,16 @@ def score_anti_spoof(
     threshold: float | None = None,
     la_threshold: float | None = None,
     device: str = DEVICE,
+    la_waveform=None,
 ) -> dict:
     """
-    Speech gate + inverted-Mel replay, then optional LFCC-LA scoring.
+    Speech gate + inverted-Mel replay, then optional LA scoring (WavLM+ASP default).
 
-    Final decision is driven by inverted-Mel unless ``LA_HARD_GATE`` is on
-    (LFCC-LA over-fires ~1.0 on browser-mic speech).
+    ``waveform`` is typically VAD speech (good for replay).
+    ``la_waveform`` should be the full pre-VAD clip for WavLM — VAD crops push
+    bona fide LA scores to ~1.0 (false SYNTHETIC).
+
+    Final decision is driven by inverted-Mel unless ``LA_HARD_GATE`` is on.
 
     Decision: NO_SPEECH | REPLAY | SYNTHETIC | UNCERTAIN | LIVE.
     """
@@ -46,8 +50,9 @@ def score_anti_spoof(
     la = None
     la_stage = None
     if LA_ENABLED:
+        la_input = la_waveform if la_waveform is not None else waveform
         la = score_la(
-            waveform,
+            la_input,
             threshold=la_threshold,
             device=device,
             check_speech=False,
@@ -65,7 +70,7 @@ def score_anti_spoof(
             "la": la_stage,
         }
 
-    # Hard LA gate only when explicitly enabled (lab / ASVspoof files).
+    # Hard LA gate only when explicitly enabled.
     if (
         LA_HARD_GATE
         and la is not None

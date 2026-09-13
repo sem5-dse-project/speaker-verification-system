@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from voice_auth.common.metrics import binary_classification_metrics, compute_eer
 

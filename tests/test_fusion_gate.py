@@ -5,7 +5,11 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from voice_auth.quality_fusion.fusion_gate import FusionGate, QualityConditionedFusion, build_fusion_gate_input
+from voice_auth.quality_fusion.fusion_gate import (
+    FusionGate,
+    QualityConditionedFusion,
+    build_fusion_gate_input,
+)
 
 
 def test_fusion_gate_input_dim() -> None:

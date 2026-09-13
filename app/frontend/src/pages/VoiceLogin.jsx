@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { ArrowLeft, AlertCircle, CheckCircle2, Mic, UserRound } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Mic, UserRound } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import PageShell from '../components/PageShell.jsx'
+import PageHeader from '../components/PageHeader.jsx'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -85,25 +87,18 @@ function VoiceLogin() {
   const guessScore = identifyResult?.similarity_score
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-100 to-white px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div>
-          <button
-            type="button"
-            onClick={() => navigate('/login')}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Login
-          </button>
-        </div>
-
-        <header className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Login with Voice</h1>
-          <p className="text-base text-slate-600 sm:text-lg">
-            Record once, pass replay detection, then confirm your password.
-          </p>
-        </header>
+    <PageShell narrow>
+      <div className="space-y-5 sm:space-y-6">
+        <PageHeader
+          icon={Mic}
+          title="Login with Voice"
+          subtitle="Record once, pass replay detection, then confirm with your password."
+          action={
+            <Link to="/login" className="btn-secondary">
+              Password login
+            </Link>
+          }
+        />
 
         <Recorder
           onRecordingChange={(value) => {
@@ -127,20 +122,20 @@ function VoiceLogin() {
           </PrimaryButton>
 
           {userGuess && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <div className="alert-info">
               <p className="flex items-center gap-2 font-semibold">
                 <UserRound className="h-4 w-4" />
                 We think you are: {userGuess.username}
               </p>
               {typeof guessScore === 'number' && (
-                <p className="mt-1 text-blue-800">Similarity: {guessScore.toFixed(4)}</p>
+                <p className="mt-1 opacity-90">Similarity: {guessScore.toFixed(4)}</p>
               )}
             </div>
           )}
 
           {identifyResult?.temporary_login_token && (
-            <form onSubmit={handleVoiceLogin} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-              <label className="block text-sm font-medium text-slate-700" htmlFor="voice-password">
+            <form onSubmit={handleVoiceLogin} className="card space-y-3 p-4">
+              <label className="label-text text-sm" htmlFor="voice-password">
                 Password
               </label>
               <input
@@ -149,15 +144,15 @@ function VoiceLogin() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Enter your password"
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="input-field"
               />
 
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(event) => setRememberMe(event.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-300"
+                  className="checkbox-brand"
                 />
                 Remember Me
               </label>
@@ -172,32 +167,35 @@ function VoiceLogin() {
             </form>
           )}
 
-          <div className="min-h-12 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm">
+          <div className="status-panel">
             {statusMessage.type === 'success' && (
-              <p className="flex items-center gap-2 text-emerald-700">
+              <p className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
                 <CheckCircle2 className="h-4 w-4" />
                 {statusMessage.text}
               </p>
             )}
 
             {statusMessage.type === 'error' && (
-              <p className="flex items-center gap-2 text-rose-700">
+              <p className="flex items-center gap-2 text-rose-700 dark:text-rose-300">
                 <AlertCircle className="h-4 w-4" />
                 {statusMessage.text}
               </p>
             )}
 
             {!statusMessage.type && (
-              <p className="text-slate-500">Record your voice to start identification.</p>
+              <p className="text-subtle">Record your voice to start identification.</p>
             )}
           </div>
 
-          <p className="text-center text-sm text-slate-600">
-            Prefer username and password? <Link to="/login" className="font-semibold text-blue-600">Sign in here</Link>
+          <p className="text-center text-sm text-muted">
+            Prefer username and password?{' '}
+            <Link to="/login" className="link-primary">
+              Sign in here
+            </Link>
           </p>
         </div>
       </div>
-    </main>
+    </PageShell>
   )
 }
 

@@ -11,6 +11,7 @@ const {
   findBestTemplateMatch,
   cosineSimilarity,
   decideByThreshold,
+  passesIdentifyGate,
 } = require('../services/similarity')
 const {
   createVoiceLoginSession,
@@ -20,6 +21,12 @@ const {
 
 const REQUIRED_ENROLLMENT_SAMPLES = Number(process.env.REQUIRED_ENROLLMENT_SAMPLES || 3)
 const DEFAULT_VERIFY_THRESHOLD = Number(process.env.DEFAULT_VERIFY_THRESHOLD || 0.25)
+/** Min cosine for open-set identify (unenrolled speakers must not get a userid). */
+const IDENTIFY_THRESHOLD = Number(
+  process.env.IDENTIFY_THRESHOLD || DEFAULT_VERIFY_THRESHOLD,
+)
+/** Min gap between best and second-best scores; 0 disables the margin check. */
+const IDENTIFY_MARGIN = Number(process.env.IDENTIFY_MARGIN || 0.05)
 const BACKEND_ROOT = path.join(__dirname, '..')
 
 const toRelativePath = (absolutePath) =>
@@ -93,10 +100,28 @@ const identifyVoice = async (req, res) => {
     }
 
     const bestMatch = findBestTemplateMatch(embedding, templates)
-    if (!bestMatch) {
-      return res.status(400).json({
+    const identifyGate = passesIdentifyGate(bestMatch, {
+      threshold: IDENTIFY_THRESHOLD,
+      margin: IDENTIFY_MARGIN,
+    })
+
+    if (!identifyGate.accepted) {
+      const message =
+        identifyGate.reason === 'ambiguous'
+          ? 'Voice match is ambiguous between users. Please use password login or re-record clearly.'
+          : 'Could not identify a matching enrolled user. Enroll your voice first, or use password login.'
+
+      return res.status(401).json({
         success: false,
-        message: 'Could not identify a matching user',
+        message,
+        identify: {
+          reason: identifyGate.reason,
+          score: identifyGate.score,
+          second_score: identifyGate.second_score,
+          margin: identifyGate.margin,
+          threshold: identifyGate.threshold,
+          required_margin: identifyGate.required_margin,
+        },
       })
     }
 
@@ -120,6 +145,13 @@ const identifyVoice = async (req, res) => {
         username: bestMatch.username,
       },
       similarity_score: bestMatch.score,
+      identify: {
+        score: identifyGate.score,
+        second_score: identifyGate.second_score,
+        margin: identifyGate.margin,
+        threshold: identifyGate.threshold,
+        required_margin: identifyGate.required_margin,
+      },
     })
   } catch (error) {
     if (error.statusCode === 503) {
