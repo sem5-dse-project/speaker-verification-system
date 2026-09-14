@@ -1,3 +1,7 @@
+// Used for the single-template 1:1 verification path (loginWithVoice), where
+// only one row is fetched so there is no brute-force scan to optimize.
+// `findBestMatch` in models/templateModel.js does the equivalent computation
+// in PostgreSQL (via pgvector `<=>`) for the many-template identify path.
 const cosineSimilarity = (a, b) => {
   if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length || a.length === 0) {
     throw new Error('Embeddings must be non-empty arrays of equal length')

@@ -14,11 +14,12 @@ const createSample = async ({
   replayScore,
   replayDecision,
 }) => {
-  const [result] = await pool.query(
+  const { rows } = await pool.query(
     `INSERT INTO collection_samples (
       admin_id, speaker_id, label, file_path, phrase, phone_model,
       distance, volume, notes, consent, replay_score, replay_decision
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    RETURNING id`,
     [
       adminId,
       speakerId,
@@ -29,17 +30,17 @@ const createSample = async ({
       distance || null,
       volume || null,
       notes || null,
-      consent ? 1 : 0,
+      Boolean(consent),
       replayScore ?? null,
       replayDecision || null,
     ],
   )
 
-  return { id: result.insertId }
+  return { id: rows[0].id }
 }
 
 const listSamples = async () => {
-  const [rows] = await pool.query(
+  const { rows } = await pool.query(
     `SELECT
       cs.id,
       cs.speaker_id,
@@ -64,7 +65,7 @@ const listSamples = async () => {
 }
 
 const countByLabel = async () => {
-  const [rows] = await pool.query(
+  const { rows } = await pool.query(
     `SELECT label, COUNT(*) AS count
      FROM collection_samples
      GROUP BY label`,

@@ -8,7 +8,6 @@ const userModel = require('../models/userModel')
 const verificationLogModel = require('../models/verificationLogModel')
 const mlClient = require('../services/mlClient')
 const {
-  findBestTemplateMatch,
   cosineSimilarity,
   decideByThreshold,
   passesIdentifyGate,
@@ -90,16 +89,19 @@ const identifyVoice = async (req, res) => {
     }
 
     const { embedding, embedding_dim } = await mlClient.extractEmbedding(absolutePath)
-    const templates = await templateModel.getAllTemplatesWithUsers()
 
-    if (!templates.length) {
+    // Open-set identification: rank the probe against every enrolled template
+    // via a pgvector cosine-distance search (see templateModel.findBestMatch)
+    // instead of loading all templates and scoring them in Node.
+    const bestMatch = await templateModel.findBestMatch(embedding, 2)
+
+    if (!bestMatch) {
       return res.status(400).json({
         success: false,
         message: 'No enrolled voice templates are available for identification',
       })
     }
 
-    const bestMatch = findBestTemplateMatch(embedding, templates)
     const identifyGate = passesIdentifyGate(bestMatch, {
       threshold: IDENTIFY_THRESHOLD,
       margin: IDENTIFY_MARGIN,
