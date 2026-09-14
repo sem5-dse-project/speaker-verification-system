@@ -13,8 +13,14 @@ const pool = new Pool({
 
 // Registers the `vector` type parser/serializer for every new connection so
 // `pool.query` can bind/return plain JS number arrays for `vector(192)` columns.
+// On a brand-new database the `vector` type doesn't exist until initSchema()
+// runs `CREATE EXTENSION vector` below, so tolerate that and retry afterwards.
 pool.on('connect', async (client) => {
-  await pgvector.registerTypes(client)
+  try {
+    await pgvector.registerTypes(client)
+  } catch (error) {
+    console.warn('pgvector types not registered yet (extension missing?):', error.message)
+  }
 })
 
 pool.on('error', (error) => {
@@ -25,7 +31,15 @@ pool.on('error', (error) => {
 const EMBEDDING_DIM = 192
 
 const initSchema = async () => {
-  await pool.query('CREATE EXTENSION IF NOT EXISTS vector')
+  const client = await pool.connect()
+  try {
+    await client.query('CREATE EXTENSION IF NOT EXISTS vector')
+    // Re-register on this client now that the type exists — it may be the
+    // same connection that failed registration in the `connect` handler above.
+    await pgvector.registerTypes(client)
+  } finally {
+    client.release()
+  }
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
