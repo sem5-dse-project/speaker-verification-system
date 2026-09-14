@@ -31,16 +31,14 @@ class MLP(nn.Module):
 
 
 # ----------------------------------------------------------------------
-# 2. SelfAttentionFusion (your original self‑attention gate)
+# 2. CrossAttentionFusion (your original cross‑attention gate)
 # ----------------------------------------------------------------------
-
-
-class SelfAttentionFusion(nn.Module):
-    def __init__(self, embedding_dim=192, num_heads=4, dropout=0.1):
+class CrossAttentionFusion(nn.Module):
+    def __init__(self, embedding_dim: int = 192, num_heads: int = 4, dropout: float = 0.1):
         super().__init__()
         assert embedding_dim % num_heads == 0
         self.proj = nn.Linear(embedding_dim, embedding_dim)
-        self.attn = nn.MultiheadAttention(
+        self.cross_attn = nn.MultiheadAttention(
             embed_dim=embedding_dim,
             num_heads=num_heads,
             dropout=dropout,
@@ -57,14 +55,11 @@ class SelfAttentionFusion(nn.Module):
         )
         self.out_proj = nn.Linear(embedding_dim, embedding_dim)
 
-    def forward(self, noisy_emb, enhanced_emb):
+    def forward(self, noisy_emb, enhanced_emb, quality_vec=None):
         n = self.proj(noisy_emb)
         e = self.proj(enhanced_emb)
-
-        # FIX: Ensure contiguous memory layout for the attention backend
-        x = torch.stack([n, e], dim=1).contiguous()
-
-        attn_out, _ = self.attn(x, x, x, need_weights=False)
+        x = torch.stack([n, e], dim=1)
+        attn_out, _ = self.cross_attn(x, x, x)
         x = self.norm1(x + attn_out)
         pooled = x.mean(dim=1)
         mlp_out = self.mlp(pooled)
@@ -74,20 +69,42 @@ class SelfAttentionFusion(nn.Module):
 
 
 # ----------------------------------------------------------------------
-# MODEL – Cross-Attention
+# 3. NoiseAwareFusion (your latest model with noise extraction)
 # ----------------------------------------------------------------------
-class CrossAttentionFusion(nn.Module):
-    def __init__(self, embedding_dim=192, num_heads=4, dropout=0.1):
+class NoiseAwareFusion(nn.Module):
+    def __init__(self, embedding_dim=192, num_heads=4, dropout=0.1, noise_bottleneck_dim=128):
         super().__init__()
         assert embedding_dim % num_heads == 0
-        self.num_heads = num_heads
-        self.head_dim = embedding_dim // num_heads
+        self.embedding_dim = embedding_dim
 
-        self.q_proj = nn.Linear(embedding_dim, embedding_dim)
-        self.k_proj = nn.Linear(embedding_dim, embedding_dim)
-        self.v_proj = nn.Linear(embedding_dim, embedding_dim)
-        self.out_proj = nn.Linear(embedding_dim, embedding_dim)
+        # Shared projection
+        self.proj = nn.Linear(embedding_dim, embedding_dim)
 
+        # Estimate noise-related information
+        self.noise_extractor = nn.Sequential(
+            nn.Linear(embedding_dim * 2, noise_bottleneck_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(noise_bottleneck_dim, embedding_dim),
+        )
+
+        # Attention
+        self.cross_attn = nn.MultiheadAttention(
+            embed_dim=embedding_dim,
+            num_heads=num_heads,
+            dropout=dropout,
+            batch_first=True,
+        )
+
+        # Noise gate
+        self.noise_gate = nn.Sequential(
+            nn.Linear(embedding_dim, embedding_dim // 4),
+            nn.ReLU(),
+            nn.Linear(embedding_dim // 4, embedding_dim),
+            nn.Sigmoid(),
+        )
+
+        # Transformer-style blocks
         self.norm1 = nn.LayerNorm(embedding_dim)
         self.norm2 = nn.LayerNorm(embedding_dim)
 
@@ -99,29 +116,74 @@ class CrossAttentionFusion(nn.Module):
             nn.Dropout(dropout),
         )
 
-        self.fc_out = nn.Linear(embedding_dim, embedding_dim)
+        self.out_proj = nn.Linear(embedding_dim, embedding_dim)
+
+        self.alpha = nn.Parameter(torch.tensor(0.1))
 
     def forward(self, noisy_emb, enhanced_emb):
-        B, D = noisy_emb.shape
-        Q = self.q_proj(noisy_emb)
-        K = self.k_proj(enhanced_emb)
-        V = self.v_proj(enhanced_emb)
+        noisy_emb = F.normalize(noisy_emb, p=2, dim=-1)
+        enhanced_emb = F.normalize(enhanced_emb, p=2, dim=-1)
+        n = self.proj(noisy_emb)
+        e = self.proj(enhanced_emb)
+        noise_est = self.noise_extractor(torch.cat([noisy_emb, enhanced_emb], dim=-1))
+        x = torch.stack([n, e, noise_est], dim=1)  # Shape: B x 3 x D
 
-        Q = Q.view(B, self.num_heads, self.head_dim)
-        K = K.view(B, self.num_heads, self.head_dim)
-        V = V.view(B, self.num_heads, self.head_dim)
+        attn_out, attn_weights = self.cross_attn(x, x, x, need_weights=True)
+        x = self.norm1(x + attn_out)
+        token_importance = attn_weights.mean(dim=1)
+        pooled = (x * token_importance.unsqueeze(-1)).sum(dim=1)
+        gate = self.noise_gate(noise_est)
+        pooled = gate * pooled + (1.0 - gate) * x.mean(dim=1)
+        mlp_out = self.mlp(pooled)
+        out = self.norm2(pooled + mlp_out)
+        correction = self.out_proj(out)
+        fused = noisy_emb + self.alpha * correction
+        fused = F.normalize(fused, p=2, dim=-1)
 
-        attn_weights = torch.matmul(Q, K.transpose(-2, -1)) / (self.head_dim**0.5)
-        attn_weights = F.softmax(attn_weights, dim=-1)
-        attn_out = torch.matmul(attn_weights, V)
-        attn_out = attn_out.contiguous().view(B, D)
-        attn_out = self.out_proj(attn_out)
+        return fused, noise_est
 
-        x = self.norm1(noisy_emb + attn_out)
-        mlp_out = self.mlp(x)
-        out = self.norm2(x + mlp_out)
-        fused = self.fc_out(out)
-        return F.normalize(fused, p=2, dim=-1)
+
+# ----------------------------------------------------------------------
+# 4. NEW: SelfAttentionFusion with agreement-scaled residual
+#    (matches sa_fusion_best.pt from the v6 training run exactly)
+# ----------------------------------------------------------------------
+class SelfAttentionFusion(nn.Module):
+    def __init__(
+        self,
+        embedding_dim: int = 192,
+        num_heads: int = 4,
+        num_layers: int = 2,
+        dropout: float = 0.1,
+    ):
+        super().__init__()
+        self.proj = nn.Linear(embedding_dim, embedding_dim)
+        self.pos_emb = nn.Parameter(torch.zeros(1, 2, embedding_dim))
+        enc_layer = nn.TransformerEncoderLayer(
+            d_model=embedding_dim,
+            nhead=num_heads,
+            dim_feedforward=embedding_dim * 4,
+            dropout=dropout,
+            batch_first=True,
+            activation="gelu",
+            norm_first=True,
+        )
+        self.encoder = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
+        self.norm = nn.LayerNorm(embedding_dim)
+        self.proj_out = nn.Linear(embedding_dim, embedding_dim)
+        nn.init.zeros_(self.proj_out.weight)
+        nn.init.zeros_(self.proj_out.bias)
+
+    def forward(self, noisy_emb, enhanced_emb, quality_vec=None):
+        n = self.proj(noisy_emb)
+        e = self.proj(enhanced_emb)
+        x = torch.stack([n, e], dim=1).contiguous() + self.pos_emb
+        h = self.encoder(x)
+        pooled = self.norm(h.mean(dim=1))
+        delta = self.proj_out(pooled)
+        cos = (noisy_emb * enhanced_emb).sum(-1, keepdim=True).clamp(-1.0, 1.0)
+        alpha = (1.0 - cos) / 2.0
+        mean_in = 0.5 * (noisy_emb + enhanced_emb)
+        return F.normalize(mean_in + alpha * delta, dim=-1)
 
 
 # ----------------------------------------------------------------------
@@ -129,41 +191,35 @@ class CrossAttentionFusion(nn.Module):
 # ----------------------------------------------------------------------
 _MODEL_REGISTRY = {
     "mlp": MLP,
-    "self_attention": SelfAttentionFusion,
     "cross_attention": CrossAttentionFusion,
+    "noise_aware": NoiseAwareFusion,
+    "self_attention": SelfAttentionFusion,  # <-- new
 }
 
 
 def load_fusion_model(
     checkpoint_path: str | Path,
-    model_type: str = "noise_aware",
+    model_type: str = "self_attention",
     device: str = DEVICE,
     **kwargs,
 ) -> nn.Module:
-    """
-    Load a fusion model from a checkpoint.
-
-    Args:
-        checkpoint_path: Path to the .pt file.
-        model_type: One of ['mlp', 'cross_attention', 'noise_aware'].
-        device: 'cpu' or 'cuda'.
-        **kwargs: Additional arguments to pass to the model constructor.
-    """
     model_cls = _MODEL_REGISTRY.get(model_type)
     if model_cls is None:
         raise ValueError(
             f"Unknown model_type: {model_type}. Available: {list(_MODEL_REGISTRY.keys())}"
         )
 
-    # Instantiate the model with default dims (override via kwargs)
     model = model_cls(**kwargs)
     ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
 
-    # The checkpoint may contain a key 'gate_state' or be the full state_dict
-    if "gate_state" in ckpt:
-        state = ckpt["gate_state"]
-    elif "model_state_dict" in ckpt:
-        state = ckpt["model_state_dict"]
+    # Handle every checkpoint key our training scripts have produced.
+    if isinstance(ckpt, dict):
+        for key in ("fusion_state_dict", "gate_state", "model_state_dict", "state_dict"):
+            if key in ckpt and isinstance(ckpt[key], dict):
+                state = ckpt[key]
+                break
+        else:
+            state = ckpt
     else:
         state = ckpt
 
