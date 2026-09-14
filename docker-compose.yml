@@ -1,0 +1,22 @@
+# Local development database only. The Node backend, React frontend, and
+# FastAPI ML server continue to run directly (npm/uvicorn) as documented in
+# their respective READMEs — this compose file intentionally adds a single
+# service to avoid introducing unnecessary infrastructure.
+services:
+  postgres:
+    # Official pgvector image (Postgres + pgvector extension prebuilt),
+    # avoids compiling/installing pgvector by hand on every startup.
+    image: pgvector/pgvector:pg16
+    container_name: voice-auth-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-voice_auth}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-password}
+      POSTGRES_DB: ${DATABASE_NAME:-voice_authentication}
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - voice_auth_pgdata:/var/lib/postgresql/data
+
+volumes:
+  voice_auth_pgdata:

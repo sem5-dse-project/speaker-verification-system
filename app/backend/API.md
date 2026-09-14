@@ -215,7 +215,7 @@ Audio must be **WAV**. Form field name must be **`audio`**. Max size: **20 MB**.
 
 ### `POST /api/voice/enroll/reset`
 
-Deletes all enrollment samples for the user (and their files) and clears `enrollment_templates`. The frontend calls this before uploading a fresh set of 3 samples.
+Deletes all enrollment samples for the user (and their files) and clears the stored `speaker_embeddings` template row. The frontend calls this before uploading a fresh set of 3 samples.
 
 **Response `200`**
 
@@ -263,7 +263,7 @@ Content-Type: multipart/form-data
 }
 ```
 
-After the **3rd** enrollment sample (with Python ML server running), `template_status` becomes `"ready"` and MySQL stores the averaged embedding in `enrollment_templates`.
+After the **3rd** enrollment sample (with Python ML server running), `template_status` becomes `"ready"` and PostgreSQL stores the averaged embedding as a pgvector `vector(192)` row in `speaker_embeddings`.
 
 **Errors**
 

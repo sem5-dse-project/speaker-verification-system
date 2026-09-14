@@ -2,7 +2,7 @@
 
 Stateless ML core for the voice authentication system.
 
-- **Express** (`app/backend`): users, JWT, WAV file storage, MySQL  
+- **Express** (`app/backend`): users, JWT, WAV file storage, PostgreSQL + pgvector  
 - **This server** (`app/server`): Silero VAD speech extraction, anti-spoof gating, ECAPA embeddings, cosine verify
 
 ## Runtime pipeline
@@ -92,7 +92,7 @@ curl -X POST http://localhost:8000/enroll/template `
   -F "files=@D:\path\enroll3.wav"
 ```
 
-Response includes `embedding` (float array). Express should store this in MySQL for the user.
+Response includes `embedding` (float array). Express stores this as a pgvector `vector(192)` row (PostgreSQL) for the user.
 
 ## Example: verify
 

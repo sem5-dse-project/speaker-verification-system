@@ -1,117 +1,121 @@
-const mysql = require('mysql2/promise')
+const { Pool } = require('pg')
+const pgvector = require('pgvector/pg')
 
-const ensureColumn = async (table, column, definitionSql) => {
-  const [rows] = await pool.query(
-    `SELECT COUNT(*) AS cnt
-     FROM INFORMATION_SCHEMA.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE()
-       AND TABLE_NAME = ?
-       AND COLUMN_NAME = ?`,
-    [table, column],
-  )
-
-  if (Number(rows[0]?.cnt || 0) === 0) {
-    await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN ${definitionSql}`)
-  }
-}
-
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+const pool = new Pool({
+  host: process.env.DATABASE_HOST,
+  port: Number(process.env.DATABASE_PORT || 5432),
+  user: process.env.DATABASE_USER,
+  password: process.env.DATABASE_PASSWORD,
+  database: process.env.DATABASE_NAME,
+  max: 10,
+  idleTimeoutMillis: 30000,
 })
 
+// Registers the `vector` type parser/serializer for every new connection so
+// `pool.query` can bind/return plain JS number arrays for `vector(192)` columns.
+pool.on('connect', async (client) => {
+  await pgvector.registerTypes(client)
+})
+
+pool.on('error', (error) => {
+  // Idle clients can be dropped by the server; log instead of crashing the app.
+  console.error('Unexpected PostgreSQL client error:', error.message)
+})
+
+const EMBEDDING_DIM = 192
+
 const initSchema = async () => {
+  await pool.query('CREATE EXTENSION IF NOT EXISTS vector')
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
+      id BIGSERIAL PRIMARY KEY,
       username VARCHAR(50) UNIQUE NOT NULL,
       password VARCHAR(255) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      role VARCHAR(16) NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `)
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS voice_samples (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id INT NOT NULL,
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       file_path VARCHAR(255) NOT NULL,
-      sample_type ENUM('enrollment', 'verification') NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT fk_voice_samples_user
-        FOREIGN KEY (user_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE
+      sample_type VARCHAR(16) NOT NULL CHECK (sample_type IN ('enrollment', 'verification')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `)
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_voice_samples_user ON voice_samples(user_id)')
 
+  // One user can have many speaker embeddings (per-model / per-version / future
+  // per-sample rows). Exactly one row per user is the active verification
+  // "template" (kind = 'template'), enforced by the partial unique index below.
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS enrollment_templates (
-      user_id INT PRIMARY KEY,
-      embedding JSON NOT NULL,
-      embedding_dim INT NOT NULL,
-      num_samples INT NOT NULL,
-      threshold FLOAT NULL,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ON UPDATE CURRENT_TIMESTAMP,
-      CONSTRAINT fk_enrollment_templates_user
-        FOREIGN KEY (user_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE
+    CREATE TABLE IF NOT EXISTS speaker_embeddings (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      embedding vector(${EMBEDDING_DIM}) NOT NULL,
+      embedding_dim INT NOT NULL DEFAULT ${EMBEDDING_DIM},
+      kind VARCHAR(16) NOT NULL DEFAULT 'template' CHECK (kind IN ('template', 'sample')),
+      model_name VARCHAR(64) NOT NULL DEFAULT 'ecapa-tdnn',
+      model_version VARCHAR(32) NOT NULL DEFAULT 'v1',
+      num_samples INT NULL,
+      threshold DOUBLE PRECISION NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
+  `)
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_speaker_embeddings_template_per_user
+      ON speaker_embeddings(user_id) WHERE kind = 'template'
+  `)
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS idx_speaker_embeddings_user ON speaker_embeddings(user_id)',
+  )
+  // HNSW + cosine ops: used by the open-set "identify" query, which ranks a
+  // probe embedding against every enrolled template. HNSW is chosen over
+  // IVFFlat because it needs no `lists` tuning tied to table size, gives
+  // strong recall/latency for the modest number of enrolled users expected
+  // here, and (unlike IVFFlat) does not degrade as new users enroll between
+  // index rebuilds.
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_speaker_embeddings_hnsw_cosine
+      ON speaker_embeddings USING hnsw (embedding vector_cosine_ops)
   `)
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS verification_logs (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id INT NOT NULL,
-      voice_sample_id INT NULL,
-      score FLOAT NOT NULL,
-      threshold FLOAT NOT NULL,
-      accepted TINYINT(1) NOT NULL,
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      voice_sample_id BIGINT NULL REFERENCES voice_samples(id) ON DELETE SET NULL,
+      score DOUBLE PRECISION NOT NULL,
+      threshold DOUBLE PRECISION NOT NULL,
+      accepted BOOLEAN NOT NULL,
       decision VARCHAR(16) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT fk_verification_logs_user
-        FOREIGN KEY (user_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE,
-      CONSTRAINT fk_verification_logs_sample
-        FOREIGN KEY (voice_sample_id)
-        REFERENCES voice_samples(id)
-        ON DELETE SET NULL
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `)
-
-  await ensureColumn(
-    'users',
-    'role',
-    "role ENUM('user', 'admin') NOT NULL DEFAULT 'user' AFTER password",
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS idx_verification_logs_user ON verification_logs(user_id)',
   )
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS collection_samples (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      admin_id INT NOT NULL,
+      id BIGSERIAL PRIMARY KEY,
+      admin_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       speaker_id VARCHAR(64) NOT NULL,
-      label ENUM('live', 'replay') NOT NULL,
+      label VARCHAR(16) NOT NULL CHECK (label IN ('live', 'replay')),
       file_path VARCHAR(512) NOT NULL,
       phrase VARCHAR(255) NULL,
       phone_model VARCHAR(128) NULL,
       distance VARCHAR(64) NULL,
       volume VARCHAR(64) NULL,
       notes TEXT NULL,
-      consent TINYINT(1) NOT NULL DEFAULT 1,
-      replay_score FLOAT NULL,
+      consent BOOLEAN NOT NULL DEFAULT true,
+      replay_score DOUBLE PRECISION NULL,
       replay_decision VARCHAR(32) NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT fk_collection_samples_admin
-        FOREIGN KEY (admin_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `)
 }
@@ -119,4 +123,6 @@ const initSchema = async () => {
 module.exports = {
   pool,
   initSchema,
+  EMBEDDING_DIM,
 }
+

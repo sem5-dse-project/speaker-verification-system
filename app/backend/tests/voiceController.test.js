@@ -83,9 +83,13 @@ describe('voiceController', () => {
         embedding: [0.1, 0.2],
         embedding_dim: 2,
       })
-      templateModel.getAllTemplatesWithUsers.mockResolvedValue([
-        { user_id: 10, username: 'alice', embedding: [0.1, 0.2] },
-      ])
+      templateModel.findBestMatch.mockResolvedValue({
+        user_id: 10,
+        username: 'alice',
+        score: 1,
+        second_score: null,
+        margin: null,
+      })
       voiceLoginCache.createVoiceLoginSession.mockReturnValue({
         token: 'temp-1',
         expires_at: '2026-08-14T00:00:00.000Z',
@@ -97,7 +101,7 @@ describe('voiceController', () => {
 
       await identifyVoice(req, res)
 
-      expect(templateModel.getAllTemplatesWithUsers).toHaveBeenCalled()
+      expect(templateModel.findBestMatch).toHaveBeenCalledWith([0.1, 0.2], 2)
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
@@ -113,9 +117,13 @@ describe('voiceController', () => {
         embedding_dim: 2,
       })
       // Cosine with [0, 1] is 0 — below default IDENTIFY_THRESHOLD
-      templateModel.getAllTemplatesWithUsers.mockResolvedValue([
-        { user_id: 10, username: 'alice', embedding: [0, 1] },
-      ])
+      templateModel.findBestMatch.mockResolvedValue({
+        user_id: 10,
+        username: 'alice',
+        score: 0,
+        second_score: null,
+        margin: null,
+      })
 
       const req = { file: { path: pathJoinSafe() } }
       const res = mockRes()
@@ -139,10 +147,13 @@ describe('voiceController', () => {
         embedding_dim: 2,
       })
       // Both nearly identical to probe → high scores, tiny margin
-      templateModel.getAllTemplatesWithUsers.mockResolvedValue([
-        { user_id: 10, username: 'alice', embedding: [1, 0.01] },
-        { user_id: 11, username: 'bob', embedding: [1, 0.02] },
-      ])
+      templateModel.findBestMatch.mockResolvedValue({
+        user_id: 10,
+        username: 'alice',
+        score: 0.999,
+        second_score: 0.998,
+        margin: 0.001,
+      })
 
       const req = { file: { path: pathJoinSafe() } }
       const res = mockRes()

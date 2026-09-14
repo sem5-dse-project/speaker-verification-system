@@ -40,7 +40,7 @@ Tests cover WAV encoding, auth token checks, password strength, API interceptor,
 ## Prerequisites
 
 - **Node.js** 18+ (npm included)
-- Backend running (MySQL + Express):
+- Backend running (PostgreSQL + Express):
 
 ```powershell
 cd D:\speaker-verification-system\app\backend
