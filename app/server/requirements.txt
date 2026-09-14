@@ -13,3 +13,6 @@ pydantic>=2.0
 webrtc_noise_gain
 silero-vad>=5.1
 onnxruntime>=1.18
+denoisers
+transformers
+huggingface_hub
