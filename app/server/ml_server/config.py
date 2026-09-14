@@ -36,9 +36,7 @@ HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8000"))
 DEVICE = os.getenv("DEVICE", "cpu")  # cpu | cuda
 # Comma-separated list of allowed CORS origins (defaults to local dev frontend/backend only)
-_raw_allowed_origins = os.getenv(
-    "ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5000"
-)
+_raw_allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5000")
 ALLOWED_ORIGINS = [origin.strip() for origin in _raw_allowed_origins.split(",") if origin.strip()]
 ECAPA_SOURCE = os.getenv("ECAPA_SOURCE", "speechbrain/spkrec-ecapa-voxceleb")
 ECAPA_SAVEDIR = Path(
@@ -97,9 +95,7 @@ _DEFAULT_LFCC_LA_CKPT = (
 # wavlm | lfcc — WavLM is strong on ASVspoof LA but saturates (~1.0) on browser mics.
 # Prefer lfcc when LA_HARD_GATE=true for laptop/app verify; use wavlm soft-only for experiments.
 LA_BACKEND = os.getenv("LA_BACKEND", "lfcc").strip().lower()
-_DEFAULT_LA_CKPT = (
-    _DEFAULT_LFCC_LA_CKPT if LA_BACKEND == "lfcc" else _DEFAULT_WAVLM_LA_CKPT
-)
+_DEFAULT_LA_CKPT = _DEFAULT_LFCC_LA_CKPT if LA_BACKEND == "lfcc" else _DEFAULT_WAVLM_LA_CKPT
 
 # Soft by default: scores always returned when enabled; hard-block only if LA_HARD_GATE.
 LA_ENABLED = os.getenv("LA_ENABLED", "false").lower() in {"1", "true", "yes"}
@@ -124,3 +120,5 @@ FUSION_MODEL_TYPE = os.getenv(
 FUSION_MODEL_PATH = Path(
     os.getenv("FUSION_MODEL_PATH", "./checkpoints/noise_aware_fusion_final.pt")
 )
+
+WAVEUNET_CHECKPOINT = Path(os.getenv("WAVEUNET_CHECKPOINT", ""))
