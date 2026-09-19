@@ -5,10 +5,10 @@ resources:
 images:
   - name: voice-auth/frontend
     newName: ghcr.io/sem5-dse-project/voice-auth-frontend
-    newTag: latest
+    newTag: sha-283d8fd
   - name: voice-auth/backend
     newName: ghcr.io/sem5-dse-project/voice-auth-backend
-    newTag: latest
+    newTag: sha-283d8fd
   - name: voice-auth/ml-server
     newName: ghcr.io/sem5-dse-project/voice-auth-ml
-    newTag: latest
+    newTag: sha-283d8fd
