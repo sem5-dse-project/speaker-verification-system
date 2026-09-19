@@ -1,0 +1,72 @@
+name: Build and push images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/frontend/**"
+      - "app/backend/**"
+      - "app/server/**"
+      - "deploy/docker/**"
+      - ".github/workflows/build-push.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  # Change OWNER to your GitHub org/user (lowercase)
+  OWNER: sem5-dse-project
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: frontend
+            file: deploy/docker/frontend.Dockerfile
+            image: voice-auth-frontend
+          - name: backend
+            file: deploy/docker/backend.Dockerfile
+            image: voice-auth-backend
+          - name: ml-server
+            file: deploy/docker/ml-server.Dockerfile
+            image: voice-auth-ml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # ML image is large; increase timeout tolerance via GHA defaults
