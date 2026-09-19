@@ -4,7 +4,7 @@ metadata:
   name: voice-auth-config
   namespace: voice-auth
 data:
-  ALLOWED_ORIGINS: "https://voices2auth.tech,http://localhost:8080"
+  ALLOWED_ORIGINS: "https://voices2auth.tech,http://voices2auth.tech,http://localhost:8080"
   ML_SERVER_URL: "http://ml-server:8000"
   REPLAY_DETECTION: "true"
   REQUIRED_ENROLLMENT_SAMPLES: "3"
@@ -19,18 +19,3 @@ data:
   REPLAY_CHECKPOINT: "/models/replay/best_inverted_mel_mixed_2017_pa2019.pt"
   LA_CHECKPOINT: "/models/lfcc/best_lfcc_la2019.pt"
   ECAPA_SAVEDIR: "/models/ecapa/spkrec-ecapa-voxceleb"
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: voice-auth-secrets
-  namespace: voice-auth
-type: Opaque
-stringData:
-  # Replace via sealed-secrets / ExternalSecrets in real prod — do not commit real values
-  DATABASE_HOST: "postgres.voice-auth.svc.cluster.local"
-  DATABASE_PORT: "5432"
-  DATABASE_USER: "voice_auth"
-  DATABASE_PASSWORD: "change-me"
-  DATABASE_NAME: "voice_authentication"
-  JWT_SECRET: "change-me-to-a-long-random-string"

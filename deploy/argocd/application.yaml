@@ -20,9 +20,17 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  # Secrets are created by bootstrap (not in Git) — do not prune/overwrite them
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      jqPathExpressions:
+        - .data
+        - .stringData

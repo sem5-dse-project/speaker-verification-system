@@ -15,6 +15,8 @@ spec:
       labels:
         app: ml-server
     spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
       containers:
         - name: ml-server
           image: voice-auth/ml-server:latest
@@ -51,10 +53,10 @@ spec:
             periodSeconds: 30
           resources:
             requests:
-              cpu: "1"
+              cpu: "500m"
               memory: 2Gi
             limits:
-              cpu: "4"
+              cpu: "2"
               memory: 6Gi
       volumes:
         - name: models
@@ -86,6 +88,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: local-path
   resources:
     requests:
       storage: 30Gi
@@ -98,6 +101,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: local-path
   resources:
     requests:
       storage: 20Gi
