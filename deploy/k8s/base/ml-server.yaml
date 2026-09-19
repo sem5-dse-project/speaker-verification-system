@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-server
+  namespace: voice-auth
+  labels:
+    app: ml-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-server
+  template:
+    metadata:
+      labels:
+        app: ml-server
+    spec:
+      containers:
+        - name: ml-server
+          image: voice-auth/ml-server:latest
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: voice-auth-config
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8000"
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+            - name: checkpoints
+              mountPath: /app/checkpoints
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 120
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "4"
+              memory: 6Gi
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: ml-models
+        - name: checkpoints
+          persistentVolumeClaim:
+            claimName: ml-checkpoints
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-server
+  namespace: voice-auth
+spec:
+  selector:
+    app: ml-server
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-models
+  namespace: voice-auth
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-checkpoints
+  namespace: voice-auth
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
