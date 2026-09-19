@@ -2,25 +2,22 @@ const fs = require('fs')
 const { pool } = require('../config/db')
 
 const createVoiceSample = async (userId, filePath, sampleType) => {
-  const [result] = await pool.query(
-    'INSERT INTO voice_samples (user_id, file_path, sample_type) VALUES (?, ?, ?)',
+  const { rows } = await pool.query(
+    `INSERT INTO voice_samples (user_id, file_path, sample_type)
+     VALUES ($1, $2, $3)
+     RETURNING id, user_id, file_path, sample_type`,
     [userId, filePath, sampleType],
   )
 
-  return {
-    id: result.insertId,
-    user_id: userId,
-    file_path: filePath,
-    sample_type: sampleType,
-  }
+  return rows[0]
 }
 
 const getVoiceHistoryByUserId = async (userId) => {
-  const [rows] = await pool.query(
+  const { rows } = await pool.query(
     `
       SELECT id, user_id, file_path, sample_type, created_at
       FROM voice_samples
-      WHERE user_id = ?
+      WHERE user_id = $1
       ORDER BY created_at DESC
     `,
     [userId],
@@ -30,11 +27,11 @@ const getVoiceHistoryByUserId = async (userId) => {
 }
 
 const countEnrollmentSamples = async (userId) => {
-  const [rows] = await pool.query(
+  const { rows } = await pool.query(
     `
       SELECT COUNT(*) AS count
       FROM voice_samples
-      WHERE user_id = ? AND sample_type = 'enrollment'
+      WHERE user_id = $1 AND sample_type = 'enrollment'
     `,
     [userId],
   )
@@ -42,13 +39,13 @@ const countEnrollmentSamples = async (userId) => {
 }
 
 const getLatestEnrollmentSamples = async (userId, limit = 3) => {
-  const [rows] = await pool.query(
+  const { rows } = await pool.query(
     `
       SELECT id, user_id, file_path, sample_type, created_at
       FROM voice_samples
-      WHERE user_id = ? AND sample_type = 'enrollment'
+      WHERE user_id = $1 AND sample_type = 'enrollment'
       ORDER BY created_at DESC
-      LIMIT ?
+      LIMIT $2
     `,
     [userId, limit],
   )
@@ -57,11 +54,11 @@ const getLatestEnrollmentSamples = async (userId, limit = 3) => {
 }
 
 const listEnrollmentSamples = async (userId) => {
-  const [rows] = await pool.query(
+  const { rows } = await pool.query(
     `
       SELECT id, user_id, file_path, sample_type, created_at
       FROM voice_samples
-      WHERE user_id = ? AND sample_type = 'enrollment'
+      WHERE user_id = $1 AND sample_type = 'enrollment'
       ORDER BY created_at ASC
     `,
     [userId],
@@ -86,7 +83,7 @@ const deleteEnrollmentSamples = async (userId, resolveAbsolutePath) => {
   await pool.query(
     `
       DELETE FROM voice_samples
-      WHERE user_id = ? AND sample_type = 'enrollment'
+      WHERE user_id = $1 AND sample_type = 'enrollment'
     `,
     [userId],
   )

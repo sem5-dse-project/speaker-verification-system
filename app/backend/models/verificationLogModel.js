@@ -8,27 +8,28 @@ const createVerificationLog = async ({
   accepted,
   decision,
 }) => {
-  const [result] = await pool.query(
+  const { rows } = await pool.query(
     `
       INSERT INTO verification_logs
         (user_id, voice_sample_id, score, threshold, accepted, decision)
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
     `,
     [
       userId,
       voiceSampleId ?? null,
       score,
       threshold,
-      accepted ? 1 : 0,
+      Boolean(accepted),
       decision,
     ],
   )
 
-  return getVerificationLogById(result.insertId)
+  return getVerificationLogById(rows[0].id)
 }
 
 const getVerificationLogById = async (id) => {
-  const [rows] = await pool.query(
+  const { rows } = await pool.query(
     `
       SELECT
         id,
@@ -40,7 +41,7 @@ const getVerificationLogById = async (id) => {
         decision,
         created_at
       FROM verification_logs
-      WHERE id = ?
+      WHERE id = $1
     `,
     [id],
   )
@@ -53,7 +54,7 @@ const getVerificationLogById = async (id) => {
 }
 
 const getVerificationLogsByUserId = async (userId, limit = 50) => {
-  const [rows] = await pool.query(
+  const { rows } = await pool.query(
     `
       SELECT
         vl.id,
@@ -67,9 +68,9 @@ const getVerificationLogsByUserId = async (userId, limit = 50) => {
         vs.file_path
       FROM verification_logs vl
       LEFT JOIN voice_samples vs ON vs.id = vl.voice_sample_id
-      WHERE vl.user_id = ?
+      WHERE vl.user_id = $1
       ORDER BY vl.created_at DESC
-      LIMIT ?
+      LIMIT $2
     `,
     [userId, Number(limit)],
   )

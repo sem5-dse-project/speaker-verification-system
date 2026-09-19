@@ -33,6 +33,7 @@ from ml_server.config import (
     REPLAY_CHECKPOINT,
     REPLAY_ENABLED,
     REPLAY_THRESHOLD,
+    WAVEUNET_CHECKPOINT,
 )
 from ml_server.ecapa import embed_audio_list, embed_audio_list_fused, load_ecapa_encoder
 from ml_server.enhancement import get_enhancer
@@ -62,27 +63,45 @@ def get_encoder():
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     global _enhancer, _fusion_model
-    # Load enhancer
+    print("[lifespan] start", flush=True)
+
     if ENHANCEMENT_MODE == "webrtc":
+        print("[lifespan] loading WebRTC enhancer", flush=True)
         try:
             _enhancer = get_enhancer("webrtc")
         except Exception as e:
-            print(f"WebRTC enhancer failed: {e}. Using pass-through.")
+            print(f"WebRTC enhancer failed: {e}. Using pass-through.", flush=True)
+            _enhancer = get_enhancer("none")
+    elif ENHANCEMENT_MODE == "waveunet":
+        try:
+            _enhancer = get_enhancer("waveunet", checkpoint_path=WAVEUNET_CHECKPOINT, device=DEVICE)
+            print(f"Wave-U-Net enhancer loaded from {WAVEUNET_CHECKPOINT}")
+        except Exception as e:
+            print(f"Wave-U-Net enhancer failed: {e}. Falling back to pass-through.")
             _enhancer = get_enhancer("none")
     else:
         _enhancer = get_enhancer("none")
-    # Load fusion model if enabled
+    print("[lifespan] enhancer ready", flush=True)
+
     _fusion_model = None
     if FUSION_ENABLED and FUSION_MODEL_PATH.exists():
+        print(f"[lifespan] loading fusion from {FUSION_MODEL_PATH}", flush=True)
         try:
             _fusion_model = load_fusion_model(
                 FUSION_MODEL_PATH, model_type=FUSION_MODEL_TYPE, device=DEVICE
             )
-
-            print(f"Fusion model loaded: {FUSION_MODEL_TYPE} from {FUSION_MODEL_PATH}")
+            print("[lifespan] fusion ready", flush=True)
         except Exception as e:
-            print(f"Fusion model load failed: {e}. Disabling fusion.")
+            print(f"Fusion load failed: {e}. Disabling fusion.", flush=True)
             _fusion_model = None
+    else:
+        print(
+            f"[lifespan] fusion skipped (enabled={FUSION_ENABLED}, "
+            f"path_exists={FUSION_MODEL_PATH.exists()})",
+            flush=True,
+        )
+
+    print("[lifespan] yielding", flush=True)
     yield
     # cleanup (optional)
 

@@ -1,21 +1,17 @@
 const { pool } = require('../config/db')
 
 const createUser = async (username, passwordHash, role = 'user') => {
-  const [result] = await pool.query(
-    'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+  const { rows } = await pool.query(
+    'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
     [username, passwordHash, role],
   )
 
-  return {
-    id: result.insertId,
-    username,
-    role,
-  }
+  return rows[0]
 }
 
 const findByUsername = async (username) => {
-  const [rows] = await pool.query(
-    'SELECT id, username, password, role FROM users WHERE username = ?',
+  const { rows } = await pool.query(
+    'SELECT id, username, password, role FROM users WHERE username = $1',
     [username],
   )
 
@@ -23,8 +19,8 @@ const findByUsername = async (username) => {
 }
 
 const findById = async (id) => {
-  const [rows] = await pool.query(
-    'SELECT id, username, role, created_at FROM users WHERE id = ?',
+  const { rows } = await pool.query(
+    'SELECT id, username, role, created_at FROM users WHERE id = $1',
     [id],
   )
 
@@ -32,8 +28,8 @@ const findById = async (id) => {
 }
 
 const findAuthById = async (id) => {
-  const [rows] = await pool.query(
-    'SELECT id, username, password, role FROM users WHERE id = ?',
+  const { rows } = await pool.query(
+    'SELECT id, username, password, role FROM users WHERE id = $1',
     [id],
   )
 
@@ -41,7 +37,7 @@ const findAuthById = async (id) => {
 }
 
 const listAdmins = async () => {
-  const [rows] = await pool.query(
+  const { rows } = await pool.query(
     `SELECT id, username, created_at
      FROM users
      WHERE role = 'admin'

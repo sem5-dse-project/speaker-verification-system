@@ -13,21 +13,21 @@ const {
 describe('verificationLogModel', () => {
   it('inserts a log and returns the normalized row', async () => {
     pool.query
-      .mockResolvedValueOnce([{ insertId: 9 }])
-      .mockResolvedValueOnce([
-        [
+      .mockResolvedValueOnce({ rows: [{ id: 9 }] })
+      .mockResolvedValueOnce({
+        rows: [
           {
             id: 9,
             user_id: 1,
             voice_sample_id: 4,
             score: '0.71',
             threshold: '0.25',
-            accepted: 1,
+            accepted: true,
             decision: 'ACCEPT',
             created_at: '2026-07-30T00:00:00.000Z',
           },
         ],
-      ])
+      })
 
     const log = await createVerificationLog({
       userId: 1,
@@ -41,7 +41,7 @@ describe('verificationLogModel', () => {
     expect(pool.query).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('INSERT INTO verification_logs'),
-      [1, 4, 0.71, 0.25, 1, 'ACCEPT'],
+      [1, 4, 0.71, 0.25, true, 'ACCEPT'],
     )
     expect(log).toEqual(
       expect.objectContaining({
@@ -54,21 +54,21 @@ describe('verificationLogModel', () => {
   })
 
   it('lists logs for a user with numeric coercion', async () => {
-    pool.query.mockResolvedValueOnce([
-      [
+    pool.query.mockResolvedValueOnce({
+      rows: [
         {
           id: 1,
           user_id: 2,
           voice_sample_id: 3,
           score: '0.1',
           threshold: '0.25',
-          accepted: 0,
+          accepted: false,
           decision: 'REJECT',
           created_at: '2026-07-30T00:00:00.000Z',
           file_path: 'uploads/verifications/user_2/a.wav',
         },
       ],
-    ])
+    })
 
     const logs = await getVerificationLogsByUserId(2, 10)
 

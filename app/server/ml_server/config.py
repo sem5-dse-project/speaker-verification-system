@@ -36,9 +36,7 @@ HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8000"))
 DEVICE = os.getenv("DEVICE", "cpu")  # cpu | cuda
 # Comma-separated list of allowed CORS origins (defaults to local dev frontend/backend only)
-_raw_allowed_origins = os.getenv(
-    "ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5000"
-)
+_raw_allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5000")
 ALLOWED_ORIGINS = [origin.strip() for origin in _raw_allowed_origins.split(",") if origin.strip()]
 ECAPA_SOURCE = os.getenv("ECAPA_SOURCE", "speechbrain/spkrec-ecapa-voxceleb")
 ECAPA_SAVEDIR = Path(
@@ -98,8 +96,8 @@ AASIST_ROOT = Path(os.getenv("AASIST_ROOT", str(_REPO_ROOT / "aasist")))
 _DEFAULT_AASIST_WEIGHT = AASIST_ROOT / "models" / "weights" / "AASIST.pth"
 
 # lfcc | wavlm | aasist — WavLM/LFCC often saturate on browser mics; AASIST is best on lab LA.
-# Prefer LA_HARD_GATE=false until calibrated on app/browser audio.
-LA_BACKEND = os.getenv("LA_BACKEND", "aasist").strip().lower()
+# Default lfcc for app/mic; use aasist for lab experiments. Prefer LA_HARD_GATE=false on browser.
+LA_BACKEND = os.getenv("LA_BACKEND", "lfcc").strip().lower()
 if LA_BACKEND == "lfcc":
     _DEFAULT_LA_CKPT = _DEFAULT_LFCC_LA_CKPT
 elif LA_BACKEND == "wavlm":
@@ -121,12 +119,14 @@ _raw_la_t_high = os.getenv("LA_T_HIGH", "").strip()
 LA_T_LOW = float(_raw_la_t_low) if _raw_la_t_low else None
 LA_T_HIGH = float(_raw_la_t_high) if _raw_la_t_high else None
 
-# Noise Fusion model
-ENHANCEMENT_MODE = os.getenv("ENHANCEMENT_MODE", "webrtc").lower()
+# Noise enhancement + embedding fusion (from feature/noise-integration)
+ENHANCEMENT_MODE = os.getenv("ENHANCEMENT_MODE", "webrtc").lower()  # webrtc | waveunet | none
 FUSION_ENABLED = os.getenv("FUSION_ENABLED", "false").lower() in {"1", "true", "yes"}
 FUSION_MODEL_TYPE = os.getenv(
     "FUSION_MODEL_TYPE", "noise_aware"
-)  # mlp | cross_attention | noise_aware
+)  # mlp | cross_attention | noise_aware | self_attention
 FUSION_MODEL_PATH = Path(
     os.getenv("FUSION_MODEL_PATH", "./checkpoints/noise_aware_fusion_final.pt")
 )
+
+WAVEUNET_CHECKPOINT = Path(os.getenv("WAVEUNET_CHECKPOINT", ""))

@@ -103,3 +103,5 @@ lightning_logs/
 .ipynb_checkpoints/
 
 SASVC2022_Baseline/
+
+test_resources/

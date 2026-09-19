@@ -6,14 +6,14 @@ const DEFAULT_ADMIN_PASSWORD = 'admin1234'
 
 const seedDefaultAdmin = async () => {
   const passwordHash = await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10)
-  const [rows] = await pool.query(
-    'SELECT id FROM users WHERE username = ?',
+  const { rows } = await pool.query(
+    'SELECT id FROM users WHERE username = $1',
     [DEFAULT_ADMIN_USERNAME],
   )
 
   if (rows.length === 0) {
     await pool.query(
-      'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+      'INSERT INTO users (username, password, role) VALUES ($1, $2, $3)',
       [DEFAULT_ADMIN_USERNAME, passwordHash, 'admin'],
     )
     console.log(`Seeded default admin user "${DEFAULT_ADMIN_USERNAME}"`)
@@ -21,7 +21,7 @@ const seedDefaultAdmin = async () => {
   }
 
   await pool.query(
-    'UPDATE users SET password = ?, role = ? WHERE username = ?',
+    'UPDATE users SET password = $1, role = $2 WHERE username = $3',
     [passwordHash, 'admin', DEFAULT_ADMIN_USERNAME],
   )
   console.log(`Updated default admin "${DEFAULT_ADMIN_USERNAME}" password and role`)
