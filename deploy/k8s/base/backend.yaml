@@ -6,7 +6,7 @@ metadata:
   labels:
     app: backend
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: backend
@@ -15,6 +15,8 @@ spec:
       labels:
         app: backend
     spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
       containers:
         - name: backend
           image: voice-auth/backend:latest
@@ -79,8 +81,9 @@ metadata:
   namespace: voice-auth
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
+  storageClassName: local-path
   resources:
     requests:
-      storage: 20Gi
-  # storageClassName: efs-sc   # set on EKS with EFS CSI for multi-replica writes
+      storage: 10Gi
+  # For multi-node EKS use ReadWriteMany + EFS storageClass instead

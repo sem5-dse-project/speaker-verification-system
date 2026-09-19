@@ -12,4 +12,3 @@ images:
   - name: voice-auth/ml-server
     newName: ghcr.io/sem5-dse-project/voice-auth-ml
     newTag: latest
-# patchesStrategicMerge or replacements for host/secrets go here

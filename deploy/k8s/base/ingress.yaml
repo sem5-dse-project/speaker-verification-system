@@ -1,20 +1,19 @@
-# Path-based routing + AWS ALB (or nginx ingress). Adjust annotations for your controller.
+# Path-based routing for k3s Traefik (default). ALB annotations kept commented for EKS.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: voice-auth
   namespace: voice-auth
   annotations:
-    # --- AWS Load Balancer Controller (EKS) ---
-    kubernetes.k8s.io/ingress.class: alb
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    # --- AWS Load Balancer Controller (EKS) alternative ---
+    # kubernetes.k8s.io/ingress.class: alb
+    # alb.ingress.kubernetes.io/scheme: internet-facing
+    # alb.ingress.kubernetes.io/target-type: ip
+    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:...
-    # --- nginx ingress alternative ---
-    # kubernetes.k8s.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
 spec:
+  ingressClassName: traefik
   rules:
     - host: voices2auth.tech
       http:
@@ -51,8 +50,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: backend
-  minReplicas: 2
-  maxReplicas: 6
+  minReplicas: 1
+  maxReplicas: 3
   metrics:
     - type: Resource
       resource:
@@ -71,8 +70,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: frontend
-  minReplicas: 2
-  maxReplicas: 6
+  minReplicas: 1
+  maxReplicas: 3
   metrics:
     - type: Resource
       resource:

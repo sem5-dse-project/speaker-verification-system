@@ -4,6 +4,7 @@ namespace: voice-auth
 resources:
   - namespace.yaml
   - config.yaml
+  - postgres.yaml
   - frontend.yaml
   - backend.yaml
   - ml-server.yaml
