@@ -1,7 +1,8 @@
 # Local development database only. The Node backend, React frontend, and
-# FastAPI ML server continue to run directly (npm/uvicorn) as documented in
-# their respective READMEs — this compose file intentionally adds a single
-# service to avoid introducing unnecessary infrastructure.
+# FastAPI ML server can still run via npm/uvicorn as documented in their READMEs.
+#
+# Full stack (frontend + backend + ml + postgres): see deploy/docker/docker-compose.yml
+# and deploy/README.md (Docker / Kubernetes / ArgoCD).
 services:
   postgres:
     # Official pgvector image (Postgres + pgvector extension prebuilt),

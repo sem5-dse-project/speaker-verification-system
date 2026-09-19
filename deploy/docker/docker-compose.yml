@@ -1,0 +1,112 @@
+# Full local/prod-like stack. Build from repo root:
+#   docker compose -f deploy/docker/docker-compose.yml --env-file deploy/docker/.env.docker up --build
+#
+# Checkpoints: place under ./app/server/checkpoints (or bind another path).
+# Replay CNN: optional mount of monorepo experiments into the ml container.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-voice_auth}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-password}
+      POSTGRES_DB: ${DATABASE_NAME:-voice_authentication}
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - voice_auth_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-voice_auth} -d ${DATABASE_NAME:-voice_authentication}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ml-server:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/ml-server.Dockerfile
+    image: ${IMAGE_REGISTRY:-voice-auth}/ml-server:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8000
+      DEVICE: ${DEVICE:-cpu}
+      REPLAY_ENABLED: ${REPLAY_ENABLED:-true}
+      LA_ENABLED: ${LA_ENABLED:-false}
+      LA_HARD_GATE: ${LA_HARD_GATE:-false}
+      LA_BACKEND: ${LA_BACKEND:-lfcc}
+      ENHANCEMENT_MODE: ${ENHANCEMENT_MODE:-none}
+      FUSION_ENABLED: ${FUSION_ENABLED:-false}
+      FUSION_MODEL_TYPE: ${FUSION_MODEL_TYPE:-self_attention}
+      FUSION_MODEL_PATH: ${FUSION_MODEL_PATH:-./checkpoints/sa_fusion_best.pt}
+      WAVEUNET_CHECKPOINT: ${WAVEUNET_CHECKPOINT:-./checkpoints/waveunet_finetuned_v4_best.pt}
+      ECAPA_SAVEDIR: /app/pretrained_models/spkrec-ecapa-voxceleb
+      REPLAY_CHECKPOINT: /replay-cnn-baseline/experiments/inverted_mel_mixed_2017_pa2019/runs/inverted_mel_mixed/best_inverted_mel_mixed_2017_pa2019.pt
+      LA_CHECKPOINT: /replay-cnn-baseline/experiments/lfcc_la2019/runs/lfcc_la/best_lfcc_la2019.pt
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080,http://localhost}
+    ports:
+      - "${ML_PORT:-8000}:8000"
+    volumes:
+      - ../../app/server/checkpoints:/app/checkpoints:ro
+      - ../../app/server/pretrained_models:/app/pretrained_models
+      # Replay / LA experiment checkpoints (optional; needed for default REPLAY paths)
+      - ../../replay-cnn-baseline:/replay-cnn-baseline:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/backend.Dockerfile
+    image: ${IMAGE_REGISTRY:-voice-auth}/backend:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    environment:
+      PORT: 5000
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${DATABASE_USER:-voice_auth}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
+      DATABASE_NAME: ${DATABASE_NAME:-voice_authentication}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      ML_SERVER_URL: http://ml-server:8000
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080,http://localhost}
+      REPLAY_DETECTION: ${REPLAY_DETECTION:-true}
+      REQUIRED_ENROLLMENT_SAMPLES: ${REQUIRED_ENROLLMENT_SAMPLES:-3}
+      DEFAULT_VERIFY_THRESHOLD: ${DEFAULT_VERIFY_THRESHOLD:-0.25}
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ml-server:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:5000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/frontend.Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    image: ${IMAGE_REGISTRY:-voice-auth}/frontend:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - backend
+
+volumes:
+  voice_auth_pgdata:
+  backend_uploads:
