@@ -144,45 +144,82 @@ class NoiseAwareFusion(nn.Module):
 
 
 # ----------------------------------------------------------------------
+# 4. NEW: SelfAttentionFusion with agreement-scaled residual
+#    (matches sa_fusion_best.pt from the v6 training run exactly)
+# ----------------------------------------------------------------------
+class SelfAttentionFusion(nn.Module):
+    def __init__(
+        self,
+        embedding_dim: int = 192,
+        num_heads: int = 4,
+        num_layers: int = 2,
+        dropout: float = 0.1,
+    ):
+        super().__init__()
+        self.proj = nn.Linear(embedding_dim, embedding_dim)
+        self.pos_emb = nn.Parameter(torch.zeros(1, 2, embedding_dim))
+        enc_layer = nn.TransformerEncoderLayer(
+            d_model=embedding_dim,
+            nhead=num_heads,
+            dim_feedforward=embedding_dim * 4,
+            dropout=dropout,
+            batch_first=True,
+            activation="gelu",
+            norm_first=True,
+        )
+        self.encoder = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
+        self.norm = nn.LayerNorm(embedding_dim)
+        self.proj_out = nn.Linear(embedding_dim, embedding_dim)
+        nn.init.zeros_(self.proj_out.weight)
+        nn.init.zeros_(self.proj_out.bias)
+
+    def forward(self, noisy_emb, enhanced_emb, quality_vec=None):
+        n = self.proj(noisy_emb)
+        e = self.proj(enhanced_emb)
+        x = torch.stack([n, e], dim=1).contiguous() + self.pos_emb
+        h = self.encoder(x)
+        pooled = self.norm(h.mean(dim=1))
+        delta = self.proj_out(pooled)
+        cos = (noisy_emb * enhanced_emb).sum(-1, keepdim=True).clamp(-1.0, 1.0)
+        alpha = (1.0 - cos) / 2.0
+        mean_in = 0.5 * (noisy_emb + enhanced_emb)
+        return F.normalize(mean_in + alpha * delta, dim=-1)
+
+
+# ----------------------------------------------------------------------
 # Registry & Loader
 # ----------------------------------------------------------------------
 _MODEL_REGISTRY = {
     "mlp": MLP,
     "cross_attention": CrossAttentionFusion,
     "noise_aware": NoiseAwareFusion,
+    "self_attention": SelfAttentionFusion,  # <-- new
 }
 
 
 def load_fusion_model(
     checkpoint_path: str | Path,
-    model_type: str = "noise_aware",
+    model_type: str = "self_attention",
     device: str = DEVICE,
     **kwargs,
 ) -> nn.Module:
-    """
-    Load a fusion model from a checkpoint.
-
-    Args:
-        checkpoint_path: Path to the .pt file.
-        model_type: One of ['mlp', 'cross_attention', 'noise_aware'].
-        device: 'cpu' or 'cuda'.
-        **kwargs: Additional arguments to pass to the model constructor.
-    """
     model_cls = _MODEL_REGISTRY.get(model_type)
     if model_cls is None:
         raise ValueError(
             f"Unknown model_type: {model_type}. Available: {list(_MODEL_REGISTRY.keys())}"
         )
 
-    # Instantiate the model with default dims (override via kwargs)
     model = model_cls(**kwargs)
     ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
 
-    # The checkpoint may contain a key 'gate_state' or be the full state_dict
-    if "gate_state" in ckpt:
-        state = ckpt["gate_state"]
-    elif "model_state_dict" in ckpt:
-        state = ckpt["model_state_dict"]
+    # Handle every checkpoint key our training scripts have produced.
+    if isinstance(ckpt, dict):
+        for key in ("fusion_state_dict", "gate_state", "model_state_dict", "state_dict"):
+            if key in ckpt and isinstance(ckpt[key], dict):
+                state = ckpt[key]
+                break
+        else:
+            state = ckpt
     else:
         state = ckpt
 
