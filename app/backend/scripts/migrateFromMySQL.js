@@ -44,7 +44,10 @@ const migrateUsers = async (mysqlConn) => {
     await pool.query(
       `INSERT INTO users (id, username, password, role, created_at)
        VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (id) DO NOTHING`,
+       ON CONFLICT (id) DO UPDATE SET
+         username = EXCLUDED.username,
+         password = EXCLUDED.password,
+         role = EXCLUDED.role`,
       [row.id, row.username, row.password, row.role || 'user', row.created_at],
     )
   }

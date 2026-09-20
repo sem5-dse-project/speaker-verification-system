@@ -91,7 +91,12 @@ const startServer = async () => {
       console.log(`Server running on http://localhost:${PORT}`)
     })
   } catch (error) {
-    console.error('Failed to start server:', error.message)
+    console.error('Failed to start server:', error.message || error)
+    if (error.code) console.error('  code:', error.code)
+    if (error.detail) console.error('  detail:', error.detail)
+    console.error(
+      '  Hint: DATABASE_* must be PostgreSQL+pgvector (not MySQL :3306). See .env.example',
+    )
     process.exit(1)
   }
 }
