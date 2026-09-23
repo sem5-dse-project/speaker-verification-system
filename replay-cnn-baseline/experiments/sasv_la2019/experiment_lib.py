@@ -203,7 +203,7 @@ def read_trials(
                 )
             )
 
-    if max_trials <= 0 or max_trials >= len(trials):
+    if max_trials is None or max_trials <= 0 or max_trials >= len(trials):
         return trials
 
     by_key: dict[str, list[SasvTrial]] = {"target": [], "nontarget": [], "spoof": []}
