@@ -26,7 +26,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/ml-server.Dockerfile
-    image: ${IMAGE_REGISTRY:-voice-auth}/ml-server:${IMAGE_TAG:-local}
+    image: ${IMAGE_REGISTRY:-voice-auth}/${ML_IMAGE_NAME:-ml-server}:${IMAGE_TAG:-local}
     restart: unless-stopped
     environment:
       HOST: 0.0.0.0
@@ -63,7 +63,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docker/backend.Dockerfile
-    image: ${IMAGE_REGISTRY:-voice-auth}/backend:${IMAGE_TAG:-local}
+    image: ${IMAGE_REGISTRY:-voice-auth}/${BACKEND_IMAGE_NAME:-backend}:${IMAGE_TAG:-local}
     restart: unless-stopped
     environment:
       PORT: 5000
@@ -100,7 +100,7 @@ services:
       dockerfile: deploy/docker/frontend.Dockerfile
       args:
         VITE_API_BASE_URL: /api
-    image: ${IMAGE_REGISTRY:-voice-auth}/frontend:${IMAGE_TAG:-local}
+    image: ${IMAGE_REGISTRY:-voice-auth}/${FRONTEND_IMAGE_NAME:-frontend}:${IMAGE_TAG:-local}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-8080}:80"
