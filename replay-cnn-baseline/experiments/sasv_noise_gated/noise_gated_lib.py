@@ -323,6 +323,96 @@ def embed_waveform(classifier, wave: torch.Tensor, device: str) -> np.ndarray:
     return emb
 
 
+def si_sdr(estimate: np.ndarray, reference: np.ndarray, eps: float = 1e-8) -> float:
+    """Scale-invariant SDR (dB) between 1-D waveforms."""
+    est = np.asarray(estimate, dtype=np.float64).reshape(-1)
+    ref = np.asarray(reference, dtype=np.float64).reshape(-1)
+    n = min(est.size, ref.size)
+    if n < 1:
+        return float("nan")
+    est = est[:n] - est[:n].mean()
+    ref = ref[:n] - ref[:n].mean()
+    dot_ref = float(np.dot(ref, ref)) + eps
+    alpha = float(np.dot(est, ref)) / dot_ref
+    target = alpha * ref
+    noise = est - target
+    return float(10.0 * np.log10((np.dot(target, target) + eps) / (np.dot(noise, noise) + eps)))
+
+
+@torch.inference_mode()
+def waveunet_process(
+    enhancer,
+    waveform: torch.Tensor,
+    *,
+    gate_mode: str = "learned",
+) -> tuple[torch.Tensor, float]:
+    """
+    Run Wave-U-Net with controllable waveform gate (Step B ablation).
+
+    ``gate_mode``:
+      - ``learned``: checkpoint SNRGateNet blend (default ``enhancer.process``)
+      - ``force_0``: return noisy input (g=0)
+      - ``force_1`` / ``full_enhance``: return ungated enhanced waveform (g=1)
+
+    Returns ``(waveform_1d_cpu, gate_value)``.
+    """
+    import torch.nn.functional as F
+    import torchaudio
+
+    mode = (gate_mode or "learned").lower().strip()
+    if mode in {"force_1", "full", "ungated"}:
+        mode = "full_enhance"
+
+    if mode == "force_0":
+        wav = waveform.detach().float().cpu().flatten()
+        return wav, 0.0
+
+    # Prefer calling into WaveUNetEnhancer internals when available.
+    if not hasattr(enhancer, "enhancer") or not hasattr(enhancer, "gate_net"):
+        # Fallback: only learned path via .process
+        out = enhancer.process(waveform.cpu())
+        if not torch.is_tensor(out):
+            out = torch.as_tensor(out, dtype=torch.float32)
+        return out.float().cpu().flatten(), float("nan")
+
+    dev = enhancer.device
+    wav = waveform.detach().float().to(dev).flatten()
+    t_in = int(wav.numel())
+    if t_in < 400:
+        return waveform.detach().float().cpu().flatten(), 0.0
+
+    wav_48 = torchaudio.functional.resample(wav.unsqueeze(0), enhancer.sr_in, enhancer.sr_model)
+    t48 = wav_48.shape[-1]
+    pad = (enhancer.max_len - (t48 % enhancer.max_len)) % enhancer.max_len
+    wav_48p = F.pad(wav_48, (0, pad)) if pad else wav_48
+    n_chunks = wav_48p.shape[-1] // enhancer.max_len
+    chunks = wav_48p.view(n_chunks, enhancer.max_len).unsqueeze(1)
+
+    enh_chunks = []
+    autocast_on = str(dev).startswith("cuda")
+    with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=autocast_on):
+        for i in range(0, n_chunks, enhancer.chunk_bs):
+            c = chunks[i : i + enhancer.chunk_bs]
+            out = enhancer.enhancer(c)
+            noise = enhancer._unwrap(out).reshape(c.shape[0], -1)[:, : enhancer.max_len].float()
+            enh_chunks.append(c.squeeze(1).float() - noise)
+    enh_48 = torch.cat(enh_chunks, dim=0).reshape(1, -1)[:, :t48]
+    enh_16 = torchaudio.functional.resample(enh_48, enhancer.sr_model, enhancer.sr_in)
+    if enh_16.shape[-1] > t_in:
+        enh_16 = enh_16[..., :t_in]
+    elif enh_16.shape[-1] < t_in:
+        enh_16 = F.pad(enh_16, (0, t_in - enh_16.shape[-1]))
+
+    if mode == "full_enhance":
+        return enh_16.squeeze(0).float().cpu(), 1.0
+
+    # learned gate blend (same as WaveUNetEnhancer.process)
+    wav_lens = torch.ones(1, device=dev)
+    g = enhancer.gate_net(wav.unsqueeze(0), wav_lens).float()
+    final = wav.unsqueeze(0) + g.unsqueeze(-1) * (enh_16 - wav.unsqueeze(0))
+    return final.squeeze(0).float().cpu(), float(g.detach().cpu().item())
+
+
 def protocol_summary() -> dict:
     return {
         "corpus": "ASVspoof 2019 LA",
@@ -379,8 +469,10 @@ __all__ = [
     "read_trials",
     "resolve_audio_path",
     "save_json",
+    "si_sdr",
     "snr_gate_weight",
     "snr_tag",
     "trial_key_counts",
+    "waveunet_process",
     "write_score_csv",
 ]

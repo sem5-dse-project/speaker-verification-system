@@ -14,6 +14,7 @@ Offline experiments: **ASVspoof 2019 LA + SASV trials**, with **test-side noise*
 | 3 | `03_baselines_and_gated_systems.ipynb` | B0 / P2 / P3 under a chosen SNR |
 | 4 | `04_matrix_tables_and_claim.ipynb` | Tables, plots, claim checklist |
 | 5 | `05_offline_score_fusion.ipynb` | Step A: offline B0/P3 score fusion (no re-score) |
+| 6 | `06_enhancer_gate_ablation.ipynb` | Step B: Wave-U-Net gate ablation smoke (SI-SDR + EER) |
 
 Shared code: `noise_gated_lib.py` (imports helpers from `../sasv_la2019`).
 
