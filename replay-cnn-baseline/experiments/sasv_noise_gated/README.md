@@ -5,7 +5,7 @@ Offline experiments: **ASVspoof 2019 LA + SASV trials**, with **test-side noise*
 
 > Not the Docker demo. Tune on **dev**, report **eval** once.
 
-## Notebooks (4 steps)
+## Notebooks
 
 | Step | Notebook | Purpose |
 |------|----------|---------|
@@ -13,6 +13,7 @@ Offline experiments: **ASVspoof 2019 LA + SASV trials**, with **test-side noise*
 | 2 | `02_noise_injection.ipynb` | MUSAN/white noise at fixed SNRs (test only) |
 | 3 | `03_baselines_and_gated_systems.ipynb` | B0 / P2 / P3 under a chosen SNR |
 | 4 | `04_matrix_tables_and_claim.ipynb` | Tables, plots, claim checklist |
+| 5 | `05_offline_score_fusion.ipynb` | Step A: offline B0/P3 score fusion (no re-score) |
 
 Shared code: `noise_gated_lib.py` (imports helpers from `../sasv_la2019`).
 
