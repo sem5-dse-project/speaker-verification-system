@@ -34,3 +34,14 @@ Shared code: `noise_gated_lib.py` (imports helpers from `../sasv_la2019`).
 ## Outputs
 
 Everything under `runs/` and `cache/noisy_wavs/` (gitignored locally as needed).
+
+
+## Run-All defaults (current)
+
+Notebooks default to **`SMOKE = False`** (full trial lists on **dev**).
+
+- Wave-U-Net: `app/server/checkpoints/waveunet_finetuned_v4_best.pt`
+- Noise: auto-discover MUSAN under common paths; else white-noise fallback
+- Notebook 03 loops all SNRs: clean, 15, 10, 5, 0 dB
+
+Override MUSAN with `NOISE_ROOT` in the setup cell, or env var `NOISE_ROOT`.

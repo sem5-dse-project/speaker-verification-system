@@ -223,17 +223,95 @@ def save_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def discover_noise_root() -> Path | None:
+    """Try common MUSAN / noise locations (override with NOISE_ROOT env)."""
+    import os
+
+    env = os.environ.get("NOISE_ROOT", "").strip()
+    candidates: list[Path] = []
+    if env:
+        candidates.append(Path(env))
+    repo = Path(__file__).resolve().parents[3]  # speaker-verification-system
+    candidates.extend(
+        [
+            Path(r"D:/downloads/musan/musan/noise"),
+            Path(r"D:/downloads/musan/musan"),
+            repo / "data" / "musan" / "noise",
+            repo / "data" / "musan",
+            repo / "data" / "rirs_noises" / "pointsource_noises",
+            Path(r"D:/data/musan/noise"),
+            Path(r"D:/musan/noise"),
+            Path(r"D:/datasets/musan/noise"),
+            Path.home() / "data" / "musan" / "noise",
+            Path.home() / "musan" / "noise",
+        ]
+    )
+    for path in candidates:
+        if path.exists() and path.is_dir():
+            # Prefer a folder that actually contains audio
+            if any(path.rglob("*.wav")) or any(path.rglob("*.flac")):
+                return path
+    return None
+
+
 def load_enhancer(device: str = "cpu"):
     """Load Wave-U-Net enhancer from app/server if checkpoint exists; else None."""
-    ensure_server_on_path()
-    try:
-        from ml_server.enhancement import load_enhancer
-        from ml_server import config as cfg
+    import os
 
-        return load_enhancer(mode="waveunet", device=device)
+    ensure_server_on_path()
+    server_root = Path(DEFAULT_SERVER)
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(server_root / ".env", override=False)
+    except Exception:
+        pass
+
+    ckpt = Path(
+        os.environ.get(
+            "WAVEUNET_CHECKPOINT",
+            str(server_root / "checkpoints" / "waveunet_finetuned_v4_best.pt"),
+        )
+    )
+    if not ckpt.is_absolute():
+        ckpt = (server_root / ckpt).resolve()
+    if not ckpt.exists():
+        print(f"[noise_gated_lib] WAVEUNET checkpoint missing: {ckpt}")
+        return None
+
+    try:
+        from ml_server.enhancement import get_enhancer
+
+        enhancer = get_enhancer(
+            mode="waveunet",
+            checkpoint_path=str(ckpt),
+            device=device,
+        )
+        print(f"[noise_gated_lib] enhancer ok: {type(enhancer).__name__} ckpt={ckpt}")
+        return enhancer
     except Exception as exc:  # pragma: no cover - env dependent
         print(f"[noise_gated_lib] enhancer unavailable: {exc}")
+        print(
+            "[noise_gated_lib] hint: pip install denoisers  "
+            "(in app/server/.venv) and ensure WAVEUNET checkpoint exists"
+        )
         return None
+
+
+def resolve_noise_bank(noise_root: Path | str | None = None, *, max_files: int = 64):
+    """Load noise bank from explicit path or auto-discovery; print what was used."""
+    root: Path | None
+    if noise_root is not None and str(noise_root).strip():
+        root = Path(noise_root)
+    else:
+        root = discover_noise_root()
+    bank = load_noise_bank(root, max_files=max_files) if root else []
+    if root and bank:
+        print(f"[noise] using {len(bank)} clips from {root}")
+    else:
+        print("[noise] MUSAN not found — using seeded white-noise fallback")
+    return bank, root
+
 
 
 @torch.inference_mode()
@@ -291,6 +369,8 @@ __all__ = [
     "load_app_ecapa",
     "load_enhancer",
     "load_noise_bank",
+    "discover_noise_root",
+    "resolve_noise_bank",
     "load_waveform",
     "maybe_noise_waveform",
     "patch_speechbrain_windows_lazy_import",
