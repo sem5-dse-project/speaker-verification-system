@@ -413,6 +413,77 @@ def waveunet_process(
     return final.squeeze(0).float().cpu(), float(g.detach().cpu().item())
 
 
+def weighted_asv_cm(s_asv: float, s_cm: float, alpha: float) -> float:
+    """``α * s_asv + (1 - α) * s_cm`` (locked α=0.30 from sasv_la2019)."""
+    a = float(alpha)
+    return float(a * s_asv + (1.0 - a) * s_cm)
+
+
+def load_aasist_cm(device: str = "cpu"):
+    """Load pretrained AASIST CM via ``sasv_la2019.aasist_fusion_lib``."""
+    ensure_sasv_on_path()
+    from aasist_fusion_lib import load_aasist_model
+
+    model, cfg = load_aasist_model(device=device)
+    return model, cfg
+
+
+@torch.inference_mode()
+def score_aasist_waveform(model, wave: torch.Tensor | np.ndarray, device: str) -> tuple[float, float]:
+    """
+    AASIST on a 1-D waveform.
+
+    Returns ``(s_cm, p_spoof)`` with ``s_cm = P(bonafide)``.
+    """
+    ensure_sasv_on_path()
+    from aasist_fusion_lib import score_aasist_utt
+
+    if torch.is_tensor(wave):
+        arr = wave.detach().cpu().numpy().reshape(-1).astype(np.float32)
+    else:
+        arr = np.asarray(wave, dtype=np.float32).reshape(-1)
+    return score_aasist_utt(model, arr, device)
+
+
+def configure_app_la_cm(cm_backend: str = "lfcc") -> str:
+    """Point app ``score_la`` at LFCC or WavLM backend; return normalized name."""
+    ensure_server_on_path()
+    import ml_server.config as cfg
+    import ml_server.la_spoof as la_mod
+
+    backend = (cm_backend or "lfcc").strip().lower()
+    cfg.LA_BACKEND = backend
+    la_mod.LA_BACKEND = backend
+    if backend == "lfcc":
+        cfg.LA_CHECKPOINT = cfg._DEFAULT_LFCC_LA_CKPT
+    else:
+        cfg.LA_CHECKPOINT = cfg._DEFAULT_WAVLM_LA_CKPT
+    la_mod.LA_CHECKPOINT = cfg.LA_CHECKPOINT
+    la_mod._la_model = None
+    la_mod._la_ckpt_path = None
+    la_mod._la_backend = None
+    return backend
+
+
+@torch.inference_mode()
+def score_app_la_waveform(wave: torch.Tensor | np.ndarray, device: str) -> tuple[float, float]:
+    """
+    App LA CM (LFCC/WavLM) on a 1-D waveform.
+
+    Returns ``(s_cm, p_spoof)`` with ``s_cm = 1 - P(spoof)``.
+    """
+    ensure_server_on_path()
+    from ml_server.la_spoof import score_la
+
+    if torch.is_tensor(wave):
+        w = wave.detach().float().cpu().reshape(-1)
+    else:
+        w = torch.as_tensor(np.asarray(wave, dtype=np.float32).reshape(-1))
+    cm = score_la(w, device=device, check_speech=False)
+    p_spoof = float(cm["score"])
+    return 1.0 - p_spoof, p_spoof
+
+
 def protocol_summary() -> dict:
     return {
         "corpus": "ASVspoof 2019 LA",
@@ -448,6 +519,7 @@ __all__ = [
     "RUNS_DIR",
     "add_noise_at_snr",
     "build_speaker_models",
+    "configure_app_la_cm",
     "cosine",
     "eers_from_preds",
     "embed_utt",
@@ -456,6 +528,7 @@ __all__ = [
     "ensure_sasv_on_path",
     "ensure_server_on_path",
     "fuse_embeddings",
+    "load_aasist_cm",
     "load_app_ecapa",
     "load_enhancer",
     "load_noise_bank",
@@ -469,10 +542,13 @@ __all__ = [
     "read_trials",
     "resolve_audio_path",
     "save_json",
+    "score_aasist_waveform",
+    "score_app_la_waveform",
     "si_sdr",
     "snr_gate_weight",
     "snr_tag",
     "trial_key_counts",
     "waveunet_process",
+    "weighted_asv_cm",
     "write_score_csv",
 ]
