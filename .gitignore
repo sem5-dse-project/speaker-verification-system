@@ -105,3 +105,7 @@ lightning_logs/
 SASVC2022_Baseline/
 
 test_resources/
+deploy_cd_key
+deploy_cd_key.pub
+
+
