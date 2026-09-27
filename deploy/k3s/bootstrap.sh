@@ -53,7 +53,8 @@ kubectl -n "${NS}" create secret docker-registry ghcr-pull-secret \
 
 echo "==> Installing ArgoCD"
 kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+# --server-side avoids the last-applied-configuration annotation exceeding 262144 bytes on large ArgoCD CRDs
+kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 echo "Waiting for argocd-server..."
 kubectl -n argocd rollout status deployment/argocd-server --timeout=300s
 
