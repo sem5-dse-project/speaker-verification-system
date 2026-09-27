@@ -144,8 +144,19 @@ class NoiseAwareFusion(nn.Module):
 
 
 # ----------------------------------------------------------------------
-# 4. NEW: SelfAttentionFusion with agreement-scaled residual
-#    (matches sa_fusion_best.pt from the v6 training run exactly)
+# 4. NEW: SelfAttentionFusion with a directly-learned blend weight
+#    (matches sa_fusion_v6_final/simple_fusion_best.pt exactly)
+#
+#    v6 replaced the earlier cosine-agreement-gated residual
+#    (alpha = (1-cos(noisy,enhanced))/2, output = 0.5*(noisy+enhanced) + alpha*delta)
+#    with a directly predicted blend weight beta = sigmoid(gate_head(pooled)).
+#    The old cosine proxy under-corrected specifically on babble at low SNR,
+#    because speech-shaped interference keeps the noisy and enhanced
+#    embeddings looking more similar than they should even when the noisy
+#    one is badly corrupted. beta is free to move wherever the training
+#    gradient sends it instead of being yoked to embedding agreement.
+#    THIS CLASS MUST MATCH THE TRAINING SCRIPT EXACTLY (including the
+#    `gate_head` submodule name) or the checkpoint will fail to load.
 # ----------------------------------------------------------------------
 class SelfAttentionFusion(nn.Module):
     def __init__(
@@ -169,21 +180,22 @@ class SelfAttentionFusion(nn.Module):
         )
         self.encoder = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
         self.norm = nn.LayerNorm(embedding_dim)
+        self.gate_head = nn.Linear(embedding_dim, 1)
         self.proj_out = nn.Linear(embedding_dim, embedding_dim)
-        nn.init.zeros_(self.proj_out.weight)
-        nn.init.zeros_(self.proj_out.bias)
 
-    def forward(self, noisy_emb, enhanced_emb, quality_vec=None):
+    def forward(self, noisy_emb, enhanced_emb, quality_vec=None, return_beta: bool = False):
         n = self.proj(noisy_emb)
         e = self.proj(enhanced_emb)
         x = torch.stack([n, e], dim=1).contiguous() + self.pos_emb
         h = self.encoder(x)
         pooled = self.norm(h.mean(dim=1))
-        delta = self.proj_out(pooled)
-        cos = (noisy_emb * enhanced_emb).sum(-1, keepdim=True).clamp(-1.0, 1.0)
-        alpha = (1.0 - cos) / 2.0
-        mean_in = 0.5 * (noisy_emb + enhanced_emb)
-        return F.normalize(mean_in + alpha * delta, dim=-1)
+        beta = torch.sigmoid(self.gate_head(pooled))  # [B,1] learned blend weight
+        delta = self.proj_out(pooled)  # small residual correction
+        blended = (1.0 - beta) * noisy_emb + beta * enhanced_emb
+        out = F.normalize(blended + delta, dim=-1)
+        if return_beta:
+            return out, beta.squeeze(-1)
+        return out
 
 
 # ----------------------------------------------------------------------
