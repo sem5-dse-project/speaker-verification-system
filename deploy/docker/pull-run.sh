@@ -5,8 +5,11 @@
 # Usage (on the EC2 instance):
 #   export GHCR_USER=your-github-username
 #   export GHCR_TOKEN=ghp_...          # PAT with read:packages
+#   export IMAGE_TAG=latest            # optional; overrides .env.docker IMAGE_TAG
 #   cp deploy/docker/.env.docker.example deploy/docker/.env.docker   # then edit secrets
 #   ./deploy/docker/pull-run.sh
+#
+# CI: GitHub Actions job deploy-compose SSHs here when ENABLE_COMPOSE_CD=true.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,13 +23,24 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   exit 1
 fi
 
+ENV_ARGS=(--env-file "${ENV_FILE}")
+OVERRIDE=""
+if [[ -n "${IMAGE_TAG:-}" ]]; then
+  OVERRIDE="$(mktemp)"
+  # shellcheck disable=SC2064
+  trap 'rm -f "${OVERRIDE}"' EXIT
+  printf 'IMAGE_TAG=%s\n' "${IMAGE_TAG}" >"${OVERRIDE}"
+  ENV_ARGS+=(--env-file "${OVERRIDE}")
+  echo "==> IMAGE_TAG override: ${IMAGE_TAG}"
+fi
+
 echo "==> Logging in to GHCR"
 echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
 
 echo "==> Pulling prebuilt images (frontend, backend, ml-server, postgres)"
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" pull postgres frontend backend ml-server
+docker compose -f "${COMPOSE_FILE}" "${ENV_ARGS[@]}" pull postgres frontend backend ml-server
 
 echo "==> Starting stack (no local build, no orchestrator)"
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" up -d --no-build
+docker compose -f "${COMPOSE_FILE}" "${ENV_ARGS[@]}" up -d --no-build --remove-orphans
 
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" ps
+docker compose -f "${COMPOSE_FILE}" "${ENV_ARGS[@]}" ps
