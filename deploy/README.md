@@ -48,6 +48,24 @@ cp deploy/docker/.env.docker.example deploy/docker/.env.docker
 
 Workflow: `.github/workflows/build-push.yml` → job **`deploy-compose`**.
 
+Each deploy:
+- `git fetch` + **`git reset --hard origin/main`** (server repo always matches GitHub; local EC2 commits are discarded)
+- Docker prune of unused images, then `pull-run.sh`
+- Keep secrets in `deploy/docker/.env.docker` (gitignored) so reset does not wipe them
+
+If deploy fails with **`no space left on device`**, SSH to EC2 and free disk:
+
+```bash
+df -h
+docker system df
+docker image prune -af
+sudo journalctl --vacuum-size=50M
+# last resort (removes unused volumes too — careful):
+# docker system prune -af --volumes
+```
+
+Small EC2 root disks often fill up after a few `voice-auth-ml` (PyTorch) image pulls.
+
 ### Docker Compose (local build smoke)
 
 ```bash

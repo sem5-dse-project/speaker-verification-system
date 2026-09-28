@@ -92,9 +92,11 @@ jobs:
             DEPLOY_PATH="${DEPLOY_PATH:-$HOME/speaker-verification-system}"
             cd "${DEPLOY_PATH}"
             if [[ -d .git ]]; then
-              git fetch --depth 1 origin main || true
-              git checkout main || true
-              git pull --ff-only origin main || true
+              echo "==> Syncing git to origin/main (reset --hard)"
+              git fetch origin main
+              git checkout -B main origin/main
+              git reset --hard origin/main
+              git clean -fd -e deploy/docker/.env.docker -e 'deploy/docker/.env.docker.*'
             fi
             export GHCR_USER="${GHCR_USER:?}"
             export GHCR_TOKEN="${GHCR_TOKEN:?}"

@@ -34,6 +34,30 @@ if [[ -n "${IMAGE_TAG:-}" ]]; then
   echo "==> IMAGE_TAG override: ${IMAGE_TAG}"
 fi
 
+echo "==> Disk before cleanup"
+df -h / /var/lib/docker 2>/dev/null || df -h /
+
+# Stop stack first so previous image tags become unused and can be pruned.
+# Volumes are kept (no -v) so Postgres data survives.
+echo "==> Stopping Compose stack (volumes retained)"
+docker compose -f "${COMPOSE_FILE}" "${ENV_ARGS[@]}" down --remove-orphans || true
+
+echo "==> Pruning unused Docker images/build cache"
+docker container prune -f >/dev/null || true
+docker image prune -af >/dev/null || true
+docker builder prune -af >/dev/null 2>/dev/null || true
+
+echo "==> Disk after cleanup"
+df -h / /var/lib/docker 2>/dev/null || df -h /
+
+AVAIL_KB="$(df -Pk / | awk 'NR==2 {print $4}')"
+# Require ~6 GiB free before pulling heavy ml-server (torch) layers.
+if [[ -n "${AVAIL_KB}" && "${AVAIL_KB}" -lt 6000000 ]]; then
+  echo "ERROR: only ${AVAIL_KB} KB free on /. Need ~6GB free to pull ml-server." >&2
+  echo "On EC2: docker system df; sudo journalctl --vacuum-size=50M; df -h" >&2
+  exit 1
+fi
+
 echo "==> Logging in to GHCR"
 echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
 
