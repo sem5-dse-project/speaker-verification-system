@@ -1,0 +1,161 @@
+name: Build and push images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/frontend/**"
+      - "app/backend/**"
+      - "app/server/**"
+      - "deploy/docker/**"
+      - ".github/workflows/build-push.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: sem5-dse-project
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: frontend
+            file: deploy/docker/frontend.Dockerfile
+            image: voice-auth-frontend
+          - name: backend
+            file: deploy/docker/backend.Dockerfile
+            image: voice-auth-backend
+          - name: ml-server
+            file: deploy/docker/ml-server.Dockerfile
+            image: voice-auth-ml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Low-RAM path: SSH to EC2 and pull GHCR images via Docker Compose (no k3s/ArgoCD).
+  # Enable with repo variable ENABLE_COMPOSE_CD=true and secrets below (see deploy/README.md).
+  deploy-compose:
+    needs: build
+    if: >-
+      github.ref == 'refs/heads/main'
+      && success()
+      && vars.ENABLE_COMPOSE_CD == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          envs: GHCR_USER,GHCR_TOKEN,DEPLOY_PATH,IMAGE_TAG,HEALTHCHECK_URL
+          script: |
+            set -euo pipefail
+            DEPLOY_PATH="${DEPLOY_PATH:-$HOME/speaker-verification-system}"
+            cd "${DEPLOY_PATH}"
+            if [[ -d .git ]]; then
+              echo "==> Syncing git to origin/main (reset --hard)"
+              git fetch origin main
+              git checkout -B main origin/main
+              git reset --hard origin/main
+              git clean -fd -e deploy/docker/.env.docker -e 'deploy/docker/.env.docker.*'
+            fi
+            export GHCR_USER="${GHCR_USER:?}"
+            export GHCR_TOKEN="${GHCR_TOKEN:?}"
+            export IMAGE_TAG="${IMAGE_TAG:-latest}"
+            chmod +x deploy/docker/pull-run.sh
+            ./deploy/docker/pull-run.sh
+            if [[ -n "${HEALTHCHECK_URL:-}" ]]; then
+              echo "==> Health check ${HEALTHCHECK_URL}"
+              for i in 1 2 3 4 5 6; do
+                if curl -sfL --max-time 10 "${HEALTHCHECK_URL}" >/dev/null; then
+                  echo "OK"
+                  exit 0
+                fi
+                sleep 10
+              done
+              echo "Health check failed" >&2
+              exit 1
+            fi
+        env:
+          GHCR_USER: ${{ secrets.GHCR_USER }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          IMAGE_TAG: latest
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+
+  # Optional: pin Kustomize tags for ArgoCD/k3s. Off by default (ENABLE_K8S_TAG_BUMP=true).
+  tag-bump:
+    needs: build
+    if: >-
+      github.ref == 'refs/heads/main'
+      && success()
+      && vars.ENABLE_K8S_TAG_BUMP == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update production image tags
+        id: bump
+        run: |
+          SHORT="sha-${GITHUB_SHA:0:7}"
+          FILE="deploy/k8s/overlays/production/kustomization.yaml"
+          sed -i "s/^    newTag: .*/    newTag: ${SHORT}/" "$FILE"
+          echo "tag=${SHORT}" >> "$GITHUB_OUTPUT"
+          echo "Updated tags to ${SHORT}"
+          cat "$FILE"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/k8s/overlays/production/kustomization.yaml
+          if git diff --staged --quiet; then
+            echo "No tag changes"
+            exit 0
+          fi
+          git commit -m "chore(deploy): bump k8s images to ${{ steps.bump.outputs.tag }} [skip ci]"
+          git push

@@ -8,6 +8,7 @@
     "start": "node server.js",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:integration": "jest -c jest.integration.config.js",
     "migrate": "node config/migrate.js",
     "migrate:from-mysql": "node scripts/migrateFromMySQL.js"
   },

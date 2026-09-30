@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: voice-auth-config
+  namespace: voice-auth
+data:
+  ALLOWED_ORIGINS: "https://voices2auth.tech,http://voices2auth.tech,http://localhost:8080"
+  ML_SERVER_URL: "http://ml-server:8000"
+  REPLAY_DETECTION: "true"
+  REQUIRED_ENROLLMENT_SAMPLES: "3"
+  DEFAULT_VERIFY_THRESHOLD: "0.25"
+  DEVICE: "cpu"
+  REPLAY_ENABLED: "true"
+  LA_ENABLED: "false"
+  LA_HARD_GATE: "false"
+  LA_BACKEND: "lfcc"
+  ENHANCEMENT_MODE: "none"
+  FUSION_ENABLED: "false"
+  REPLAY_CHECKPOINT: "/models/replay/best_inverted_mel_mixed_2017_pa2019.pt"
+  LA_CHECKPOINT: "/models/lfcc/best_lfcc_la2019.pt"
+  ECAPA_SAVEDIR: "/models/ecapa/spkrec-ecapa-voxceleb"

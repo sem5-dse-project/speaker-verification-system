@@ -13,6 +13,11 @@ load_dotenv(_ROOT / ".env")
 SAMPLE_RATE = int(os.getenv("SAMPLE_RATE", "16000"))
 MAX_SECONDS = float(os.getenv("MAX_SECONDS", "4.0"))
 # Cosine ACCEPT threshold (raised so silence/noise rarely clears speaker verify)
+# NOTE: this was tuned against an earlier model's score distribution. Re-run
+# calibrate_verification_threshold.py / explore_threshold_subsets.py against
+# the v6 checkpoints and update this to your chosen target-FAR operating
+# point before relying on it -- score distributions shift when the
+# enhancer/fusion change, so 0.45 is not guaranteed to still be correct.
 DEFAULT_THRESHOLD = float(os.getenv("DEFAULT_THRESHOLD", "0.45"))
 # Silero VAD preprocessing (before replay + ECAPA)
 VAD_ENABLED = os.getenv("VAD_ENABLED", "true").lower() in {"1", "true", "yes"}
@@ -119,14 +124,20 @@ _raw_la_t_high = os.getenv("LA_T_HIGH", "").strip()
 LA_T_LOW = float(_raw_la_t_low) if _raw_la_t_low else None
 LA_T_HIGH = float(_raw_la_t_high) if _raw_la_t_high else None
 
-# Noise enhancement + embedding fusion (from feature/noise-integration)
-ENHANCEMENT_MODE = os.getenv("ENHANCEMENT_MODE", "webrtc").lower()  # webrtc | waveunet | none
-FUSION_ENABLED = os.getenv("FUSION_ENABLED", "false").lower() in {"1", "true", "yes"}
+# Noise Fusion model
+# "waveunet" + self_attention is the final v5/v6 pipeline (5-loss enhancer,
+# no gate; learned-blend fusion). webrtc/noise_aware remain available via
+# env override if you need to roll back to an earlier configuration.
+ENHANCEMENT_MODE = os.getenv("ENHANCEMENT_MODE", "waveunet").lower()
+FUSION_ENABLED = os.getenv("FUSION_ENABLED", "true").lower() in {"1", "true", "yes"}
 FUSION_MODEL_TYPE = os.getenv(
-    "FUSION_MODEL_TYPE", "noise_aware"
+    "FUSION_MODEL_TYPE", "self_attention"
 )  # mlp | cross_attention | noise_aware | self_attention
-FUSION_MODEL_PATH = Path(
-    os.getenv("FUSION_MODEL_PATH", "./checkpoints/noise_aware_fusion_final.pt")
-)
+FUSION_MODEL_PATH = Path(os.getenv("FUSION_MODEL_PATH", "./checkpoints/simple_fusion_best.pt"))
 
-WAVEUNET_CHECKPOINT = Path(os.getenv("WAVEUNET_CHECKPOINT", ""))
+# Copy sa_fusion_v6_final/simple_fusion_best.pt to FUSION_MODEL_PATH and
+# simple_enhancer_v5/simple_enhancer_best.pt to WAVEUNET_CHECKPOINT (or set
+# these env vars to wherever you keep them).
+WAVEUNET_CHECKPOINT = Path(
+    os.getenv("WAVEUNET_CHECKPOINT", "./checkpoints/simple_enhancer_best.pt")
+)

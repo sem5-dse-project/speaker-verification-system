@@ -89,14 +89,22 @@ class SNRGateNet(nn.Module):
 
 class WaveUNetEnhancer:
     """
-    Fine-tuned Wave-U-Net + SNR gate, single-file inference.
+    Fine-tuned Wave-U-Net enhancer, single-file inference.
 
     Interface matches WebRTCEnhancer/PassThroughEnhancer:
         process(waveform_1d_cpu) -> waveform_1d_cpu (same length, same SR).
 
     Internally:
-      16 kHz -> 48 kHz -> chunked Wave-U-Net -> residual subtraction
-      -> 48 kHz -> 16 kHz -> SNR-gated blend with the original noisy input.
+      16 kHz -> 48 kHz -> chunked Wave-U-Net -> residual subtraction -> 48 kHz -> 16 kHz.
+
+    The v5/v6 training pipeline (STFT + SI-SDR + ID + PROTO + CLEAN losses,
+    no gate) returns this enhanced signal directly -- fusion.py's
+    SelfAttentionFusion is what decides how much to trust it per-example,
+    not a fixed SNR heuristic. The older v4_long checkpoint (11 losses +
+    SNRGateNet) is still supported for backward compatibility: if the
+    checkpoint contains a `gate_net_state_dict`, it's loaded and applied;
+    if not (the current/final checkpoint), the gate is skipped entirely
+    rather than falling back to a random-init one.
     """
 
     def __init__(
@@ -132,16 +140,17 @@ class WaveUNetEnhancer:
         if enh_state is None:
             raise RuntimeError(f"No enhancer_state_dict in {checkpoint_path}")
 
-        # Key remap for the pretrained serialization mismatch:
-        # encoder/decoder: .batch_norm. -> .norm.norm.
-        # middle.1 only: middle.1.X -> middle.1.norm.X (middle.0 unaffected)
+        # Key remap, needed only if loading a raw (pre-fine-tuning) HuggingFace
+        # checkpoint. A no-op on the v5/v6 fine-tuned checkpoint, since its
+        # keys were already remapped once during training before being saved
+        # via enhancer.state_dict() -- harmless to leave in for either case.
         new_sd = {}
         for k, v in enh_state.items():
             k2 = k
             if (".encoder_layers." in k2 or ".decoder_layers." in k2) and ".batch_norm." in k2:
                 k2 = k2.replace(".batch_norm.", ".norm.norm.")
             m = re.match(
-                r"^(model\.middle\.1)\.(weight|bias|running_mean|running_var|num_batches_tracked)$",
+                r"^(model\.middle\.\d+)\.(weight|bias|running_mean|running_var|num_batches_tracked)$",
                 k2,
             )
             if m:
@@ -155,17 +164,25 @@ class WaveUNetEnhancer:
         for p in self.enhancer.parameters():
             p.requires_grad = False
 
-        # --- gate ---
-        self.gate_net = SNRGateNet().to(device)
-        if "gate_net_state_dict" in ckpt and ckpt["gate_net_state_dict"] is not None:
-            gm, gu = self.gate_net.load_state_dict(ckpt["gate_net_state_dict"], strict=False)
+        # --- gate: optional, only present in legacy v4_long checkpoints ---
+        gate_state = ckpt.get("gate_net_state_dict")
+        if gate_state is not None:
+            self.gate_net = SNRGateNet().to(device)
+            gm, gu = self.gate_net.load_state_dict(gate_state, strict=False)
             if gm or gu:
                 print(f"[WaveUNetEnhancer] gate load: missing={len(gm)} unexpected={len(gu)}")
+            self.gate_net.eval()
+            for p in self.gate_net.parameters():
+                p.requires_grad = False
+            print(
+                "[WaveUNetEnhancer] gate found in checkpoint -- using gated blend (legacy v4_long mode)."
+            )
         else:
-            print("[WaveUNetEnhancer] WARNING: no gate in checkpoint; using random-init gate.")
-        self.gate_net.eval()
-        for p in self.gate_net.parameters():
-            p.requires_grad = False
+            self.gate_net = None
+            print(
+                "[WaveUNetEnhancer] no gate in checkpoint -- returning pure enhancer output "
+                "(v5/v6 pipeline; fusion.py handles the noisy/enhanced blend instead)."
+            )
 
     @staticmethod
     def _unwrap(out):
@@ -216,10 +233,15 @@ class WaveUNetEnhancer:
         elif enh_16.shape[-1] < T_in:
             enh_16 = F.pad(enh_16, (0, T_in - enh_16.shape[-1]))
 
-        # SNR gate: blend noisy and enhanced
-        wav_lens = torch.ones(1, device=dev)
-        g = self.gate_net(wav.unsqueeze(0), wav_lens).float()  # (1,)
-        final = wav.unsqueeze(0) + g.unsqueeze(-1) * (enh_16 - wav.unsqueeze(0))
+        if self.gate_net is not None:
+            # Legacy v4_long path: SNR-gated blend with the original noisy input.
+            wav_lens = torch.ones(1, device=dev)
+            g = self.gate_net(wav.unsqueeze(0), wav_lens).float()  # (1,)
+            final = wav.unsqueeze(0) + g.unsqueeze(-1) * (enh_16 - wav.unsqueeze(0))
+        else:
+            # v5/v6 path: pure enhancer output. fusion.py's SelfAttentionFusion
+            # blends this against the noisy embedding downstream, per-example.
+            final = enh_16
 
         return final.squeeze(0).cpu()
 
