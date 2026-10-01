@@ -188,17 +188,79 @@ def main() -> None:
         la_path,
     )
 
-    print(f"{'Model':<42} {'Test':<12} {'EER':>8} {'Scored':>10} {'Protocol':>10} {'Cover':>8}")
+    tdcf_by_model = {}
+    tdcf_payload = _load(runs / "pa_tdcf.json")
+    if tdcf_payload:
+        for item in tdcf_payload.get("rows", []):
+            tdcf_by_model[item["model"]] = item.get("min_tdcf")
+    tdcf_alias = {
+        "mixed mel": "mixed log-Mel",
+        "mixed inverted_mel": "mixed inverted-Mel",
+        "mixed lfcc": "mixed LFCC",
+    }
+    for row in rows:
+        if row.get("test") != "PA eval":
+            continue
+        key = tdcf_alias.get(row["model"], row["model"])
+        if key in tdcf_by_model:
+            row["min_tdcf"] = tdcf_by_model[key]
+
+    for feature, label in (("mel", "2017-only log-Mel"), ("inverted_mel", "2017-only inverted-Mel")):
+        path = runs / f"2017_{feature}_on_pa_eval" / "pa2019_eval_metrics.json"
+        data = _load(path)
+        if data is None:
+            continue
+        oracle = data.get("oracle_eer_on_pa2019") or {}
+        rows.append(
+            {
+                "model": label,
+                "test": "PA eval",
+                "eer": oracle.get("eer_percent"),
+                "scored": data.get("num_scored_files"),
+                "protocol": expected["pa_eval"],
+                "skipped": data.get("num_skipped_corrupt"),
+                "min_tdcf": tdcf_by_model.get(label),
+            }
+        )
+
+    seed_payload = _load(runs / "mixed_imel_seeds_eval.json")
+    if isinstance(seed_payload, list):
+        for item in seed_payload:
+            seed = item.get("seed")
+            label = f"mixed inverted-Mel seed {seed}"
+            rows.append(
+                {
+                    "model": label,
+                    "test": "2017 eval",
+                    "eer": item.get("eer_2017"),
+                    "scored": item.get("n_2017"),
+                    "protocol": expected["2017_eval"],
+                }
+            )
+            rows.append(
+                {
+                    "model": label,
+                    "test": "PA eval",
+                    "eer": item.get("eer_pa"),
+                    "scored": item.get("n_pa"),
+                    "protocol": expected["pa_eval"],
+                    "min_tdcf": tdcf_by_model.get(label),
+                }
+            )
+
+    print(f"{'Model':<42} {'Test':<12} {'EER':>8} {'t-DCF':>8} {'Scored':>10} {'Protocol':>10} {'Cover':>8}")
     for row in rows:
         eer = row.get("eer")
         eer_s = "—" if eer is None else f"{float(eer):.2f}"
+        tdcf = row.get("min_tdcf")
+        tdcf_s = "—" if tdcf is None else f"{float(tdcf):.4f}"
         scored = row.get("scored")
         protocol = row.get("protocol")
         cover = "—"
         if isinstance(scored, int) and isinstance(protocol, int) and protocol:
             cover = f"{100.0 * scored / protocol:.1f}%"
         print(
-            f"{row['model']:<42} {row['test']:<12} {eer_s:>8} "
+            f"{row['model']:<42} {row['test']:<12} {eer_s:>8} {tdcf_s:>8} "
             f"{str(scored if scored is not None else '—'):>10} {str(protocol):>10} {cover:>8}"
         )
         if isinstance(scored, int) and isinstance(protocol, int) and scored != protocol:
