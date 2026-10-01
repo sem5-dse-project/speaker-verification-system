@@ -66,7 +66,7 @@ def main() -> None:
     allowed = set(AudioConfig.__dataclass_fields__)
     config = AudioConfig(**{k: v for k, v in cfg.items() if k in allowed})
     model = ReplayCNN(config).to(device)
-    model.load_state_dict(ckpt["model_state"])
+    model.load_state_dict(ckpt["model_state"], strict=False)
     model.eval()
     train_thr = float(ckpt["threshold"])
     print(f"feature={config.feature_type} device={device} train_thr={train_thr:.4f}")

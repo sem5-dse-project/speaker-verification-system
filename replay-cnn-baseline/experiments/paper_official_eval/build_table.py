@@ -85,6 +85,32 @@ def main() -> None:
         },
         pa_on_pa,
     )
+    aasist_2017 = runs / "aasist_2017_eval" / "eval_metrics.json"
+    data = _load(aasist_2017)
+    if data is not None:
+        rows.append(
+            {
+                "model": "AASIST zero-shot (LA weights)",
+                "test": "2017 eval",
+                "eer": _eer(data),
+                "scored": data.get("num_files") or data.get("num_scored_files"),
+                "protocol": expected["2017_eval"],
+            }
+        )
+    aasist_pa = runs / "aasist_pa_eval" / "metrics.json"
+    data = _load(aasist_pa)
+    if data is not None:
+        rows.append(
+            {
+                "model": "AASIST zero-shot (LA weights)",
+                "test": "PA eval",
+                "eer": _eer(data),
+                "scored": data.get("num_scored_files"),
+                "protocol": expected["pa_eval"],
+                "skipped": data.get("num_skipped_corrupt"),
+            }
+        )
+
     pa_on_2017 = runs / "pa_specialist_on_2017_eval" / "asvspoof2017_eval_metrics.json"
     data = _load(pa_on_2017)
     add(
