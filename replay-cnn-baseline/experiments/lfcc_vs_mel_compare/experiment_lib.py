@@ -53,6 +53,7 @@ from mixed_data import (  # noqa: E402
     balance_by_corpus,
     count_summary,
     limit_mixed_stratified,
+    mix_by_pa_fraction,
 )
 
 DEFAULT_ASV17 = _REPO_ROOT / "replay-cnn-baseline" / "data"
@@ -132,6 +133,7 @@ def load_mixed_train_val(
     max_val: int = 0,
     balance_corpora: bool = True,
     refresh_cache: bool = False,
+    pa_fraction: float | None = None,
 ):
     asv17_root = Path(asv17_root or DEFAULT_ASV17)
     pa_root = Path(pa_root or DEFAULT_PA)
@@ -146,7 +148,9 @@ def load_mixed_train_val(
     val_records = asv_val + pa_val
     train_records = limit_mixed_stratified(train_records, max_train, seed)
     val_records = limit_mixed_stratified(val_records, max_val, seed + 2)
-    if balance_corpora:
+    if pa_fraction is not None:
+        train_records = mix_by_pa_fraction(train_records, pa_fraction, seed)
+    elif balance_corpora:
         train_records = balance_by_corpus(train_records, seed)
     return train_records, val_records, skipped
 
@@ -172,6 +176,7 @@ def train_feature(
     seed: int = 42,
     force_cpu: bool = False,
     refresh_cache: bool = False,
+    pa_fraction: float | None = None,
 ) -> dict:
     """Train one front-end on mixed 2017+PA. Returns summary dict."""
     feature_type = feature_type.strip().lower()
@@ -196,6 +201,7 @@ def train_feature(
         max_val=max_val,
         balance_corpora=balance_corpora,
         refresh_cache=refresh_cache,
+        pa_fraction=pa_fraction,
     )
     if skipped:
         (output_dir / "pa_train_skipped_utts.txt").write_text(
@@ -207,7 +213,14 @@ def train_feature(
     print(f"Train: {json.dumps(train_summary)}")
     print(f"Val:   {json.dumps(val_summary)}")
     (output_dir / "data_summary.json").write_text(
-        json.dumps({"train": train_summary, "val": val_summary}, indent=2),
+        json.dumps(
+            {
+                "train": train_summary,
+                "val": val_summary,
+                "pa_fraction": pa_fraction,
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
 
@@ -324,6 +337,7 @@ def train_feature(
         "checkpoint": str(ckpt_path),
         "train_summary": train_summary,
         "val_summary": val_summary,
+        "pa_fraction": pa_fraction,
     }
     (output_dir / "train_summary.json").write_text(
         json.dumps(summary, indent=2), encoding="utf-8"

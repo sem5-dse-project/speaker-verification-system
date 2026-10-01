@@ -108,4 +108,9 @@ test_resources/
 deploy_cd_key
 deploy_cd_key.pub
 
+# Local paper draft (not for the repo)
+docs/Front-end-choice-and-cross-corpus-training-for-replay-detection.docx
+docs/Front-end-choice-and-cross-corpus-training-for-replay-detection.pdf
+docs/Cross-Corpus-Robustness-of-Replay-Detection.docx
+docs/Cross-Corpus-Robustness-of-Replay-Detection.pdf
 

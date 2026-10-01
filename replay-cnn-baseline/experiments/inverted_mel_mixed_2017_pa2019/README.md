@@ -56,18 +56,16 @@ python eval_mixed.py `
 
 Outputs `comparison_summary.json` with side-by-side EER / F1.
 
+## Locked results
+
+See **[results.md](results.md)** for the report table: mixed inverted-Mel on 2017 / PA,
+single-domain baselines, and Mel / LFCC front-end comparison (from existing JSON runs).
+
 ## How to judge success
 
-Compare against your earlier single-domain numbers:
-
-| Model | ASVspoof2017 | PA2019 |
-|-------|--------------|--------|
-| 2017-only | good in-domain | ~poor / ~50% EER zero-shot |
-| PA-only | poor cross | ~8% EER (readable full) |
-| **Mixed (this)** | ? | ? |
-
-Mixed training is a win if **both** columns improve vs the cross-domain failures,
-even if each is slightly worse than its specialist.
+Mixed training is a win if **both** corpora are usable with one checkpoint
+(vs PA→2017 zero-shot failure), even if each is slightly worse than its specialist.
+That is what the locked table in `results.md` shows.
 
 ## Notes
 

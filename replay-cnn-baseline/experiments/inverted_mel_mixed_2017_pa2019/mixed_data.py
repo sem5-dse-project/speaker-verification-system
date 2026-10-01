@@ -51,6 +51,49 @@ def balance_by_corpus(
     return mixed
 
 
+def mix_by_pa_fraction(
+    records: list[MixedRecord], pa_fraction: float, seed: int
+) -> list[MixedRecord]:
+    """Draw one epoch at ``pa_fraction`` PA and the rest ASVspoof 2017.
+
+    Epoch length matches ``balance_by_corpus``: twice the larger corpus, so
+    0.5 is the same number of examples as the existing 50/50 recipe. A corpus
+    with fewer real files is repeated. ``pa_fraction`` 1 or 0 still fills
+    that same epoch length.
+    """
+    if not 0.0 <= pa_fraction <= 1.0:
+        raise ValueError(f"pa_fraction must be in [0, 1], got {pa_fraction}")
+    by = {"asvspoof2017": [], "pa2019": []}
+    for record in records:
+        by[record.corpus].append(record)
+    asv = by["asvspoof2017"]
+    pa = by["pa2019"]
+    epoch = 2 * max(len(asv), len(pa))
+    n_pa = int(round(pa_fraction * epoch))
+    n_asv = epoch - n_pa
+    if n_asv and not asv:
+        raise ValueError("ASVspoof 2017 pool is empty")
+    if n_pa and not pa:
+        raise ValueError("PA pool is empty")
+    rng = random.Random(seed)
+
+    def draw(pool: list[MixedRecord], n: int) -> list[MixedRecord]:
+        if n == 0:
+            return []
+        out: list[MixedRecord] = []
+        while len(out) < n:
+            need = n - len(out)
+            if need >= len(pool):
+                out.extend(pool)
+            else:
+                out.extend(rng.sample(pool, need))
+        return out
+
+    mixed = draw(asv, n_asv) + draw(pa, n_pa)
+    rng.shuffle(mixed)
+    return mixed
+
+
 def limit_mixed_stratified(
     records: list[MixedRecord], maximum: int, seed: int
 ) -> list[MixedRecord]:
