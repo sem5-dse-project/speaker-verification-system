@@ -140,6 +140,17 @@ def _load_cm(path: Path) -> tuple[np.ndarray, np.ndarray, int]:
     return np.asarray(bonafide), np.asarray(spoof), len(bonafide) + len(spoof)
 
 
+def min_tdcf_for_predictions(path: Path) -> float:
+    """Minimum normalised t-DCF for one PA-eval prediction CSV."""
+    grouped = _asv_scores(pa_root())
+    _eer_asv, asv_threshold = _eer(grouped["target"], grouped["nontarget"])
+    pfa_asv = float(np.mean(grouped["nontarget"] >= asv_threshold))
+    pmiss_asv = float(np.mean(grouped["target"] < asv_threshold))
+    pmiss_spoof_asv = float(np.mean(grouped["spoof"] < asv_threshold))
+    bonafide, spoof, _n_files = _load_cm(Path(path))
+    return _min_tdcf(bonafide, spoof, pfa_asv, pmiss_asv, pmiss_spoof_asv)
+
+
 def main() -> None:
     grouped = _asv_scores(pa_root())
     eer_asv, asv_threshold = _eer(grouped["target"], grouped["nontarget"])
