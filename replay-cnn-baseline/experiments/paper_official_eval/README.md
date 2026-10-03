@@ -15,6 +15,7 @@ Replace `data/PA` with a fresh ASVspoof 2019 PA download before notebooks 00, 02
 | `07_mixed_imel_seeds.ipynb` | Two more mixed inverted-Mel seeds, then 2017 eval and PA eval |
 | `08_mixed_imel_ratios.ipynb` | Inverted-Mel at 100%, 75%, 25%, and 0% PA, then official eval and PA t-DCF |
 | `09_pa_only_logmel.ipynb` | Train PA-only log-Mel, then score 2017 eval, PA eval, and PA t-DCF |
+| `10_repeat_mixture_and_mel_seeds.ipynb` | Seeds 43 and 44 for the 100%, 75%, and 25% PA mixtures, plus mixed log-Mel |
 | `05_paper_table.ipynb` | One table of equal error rate and protocol coverage |
 
 PA eval is about 135,000 files, so notebooks 02 and 03 take a long time. Results are written under `runs/`.
