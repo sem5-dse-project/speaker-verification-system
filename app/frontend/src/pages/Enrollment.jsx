@@ -219,6 +219,7 @@ function Enrollment() {
 
             <Recorder
               key={recorderKey}
+              readsSentence
               onRecordingChange={setCurrentRecording}
               onRecorderError={(message) =>
                 setStatusMessage(
