@@ -8,6 +8,7 @@ SASV scoring code. Equal error rate is the sweep on this split.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import sys
 from pathlib import Path
@@ -95,11 +96,13 @@ def score_pa(batch_size: int, max_files: int) -> None:
     audio_dir = pa_root() / "ASVspoof2019_PA_eval" / "flac"
     labels: list[int] = []
     scores: list[float] = []
+    utt_ids: list[str] = []
     skipped = 0
     for start in tqdm(range(0, len(records), batch_size), desc="AASIST PA eval"):
         chunk = records[start : start + batch_size]
         waves = []
         chunk_labels = []
+        chunk_ids = []
         for utt_id, label, _speaker in chunk:
             path = audio_dir / f"{utt_id}.flac"
             if not path.is_file():
@@ -110,6 +113,7 @@ def score_pa(batch_size: int, max_files: int) -> None:
                 skipped += 1
                 continue
             chunk_labels.append(label)
+            chunk_ids.append(utt_id)
         if not waves:
             continue
         batch = torch.stack(waves).to(device)
@@ -118,6 +122,7 @@ def score_pa(batch_size: int, max_files: int) -> None:
             spoof_prob = F.softmax(logits, dim=1)[:, 0]
         scores.extend(spoof_prob.detach().cpu().tolist())
         labels.extend(chunk_labels)
+        utt_ids.extend(chunk_ids)
     labels_np = np.asarray(labels, dtype=int)
     scores_np = np.asarray(scores, dtype=float)
     eer, eer_thr = zs.calculate_eer(labels_np, scores_np)
@@ -136,6 +141,24 @@ def score_pa(batch_size: int, max_files: int) -> None:
     }
     output = paper_runs() / "aasist_pa_eval"
     output.mkdir(parents=True, exist_ok=True)
+    predictions = output / "pa2019_eval_predictions.csv"
+    with predictions.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=["utt_id", "true_label", "replay_probability", "prediction"],
+        )
+        writer.writeheader()
+        for utt_id, label, score in zip(utt_ids, labels, scores, strict=True):
+            true_label = "spoof" if int(label) == 1 else "bonafide"
+            writer.writerow(
+                {
+                    "utt_id": f"pa2019:{utt_id}",
+                    "true_label": true_label,
+                    "replay_probability": float(score),
+                    "prediction": "spoof" if float(score) >= float(eer_thr) else "bonafide",
+                }
+            )
+    result["predictions_csv"] = str(predictions.resolve())
     (output / "metrics.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result, indent=2))
     if max_files <= 0 and result["num_scored_files"] != 134730:

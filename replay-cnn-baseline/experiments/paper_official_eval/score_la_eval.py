@@ -32,6 +32,26 @@ from la_data import (  # noqa: E402
 )
 
 
+def _lfcc_network():
+    """Load the comparison CNN without reusing the Mel-only ``features`` module."""
+    import importlib
+
+    compare_dir = _THIS.parent / "lfcc_vs_mel_compare"
+    sys.path.insert(0, str(compare_dir))
+    saved = {
+        name: sys.modules.pop(name)
+        for name in ("features", "model")
+        if name in sys.modules
+    }
+    try:
+        network = importlib.import_module("model")
+        return network.AudioConfig, network.ReplayCNN
+    finally:
+        sys.modules.pop("model", None)
+        sys.modules.pop("features", None)
+        sys.modules.update(saved)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--split", choices=["train", "dev", "eval"], default="eval")
@@ -63,9 +83,13 @@ def main() -> None:
     cfg = dict(ckpt["audio_config"])
     if "feature_type" not in cfg:
         cfg["feature_type"] = ckpt.get("feature_type", "inverted_mel")
-    allowed = set(AudioConfig.__dataclass_fields__)
-    config = AudioConfig(**{k: v for k, v in cfg.items() if k in allowed})
-    model = ReplayCNN(config).to(device)
+    feature_key = str(cfg.get("feature_type", "")).strip().lower().replace("-", "_")
+    config_cls, network_cls = AudioConfig, ReplayCNN
+    if feature_key in {"lfcc", "log_lfcc", "linear_fcc"}:
+        config_cls, network_cls = _lfcc_network()
+    allowed = set(config_cls.__dataclass_fields__)
+    config = config_cls(**{k: v for k, v in cfg.items() if k in allowed})
+    model = network_cls(config).to(device)
     model.load_state_dict(ckpt["model_state"], strict=False)
     model.eval()
     train_thr = float(ckpt["threshold"])
