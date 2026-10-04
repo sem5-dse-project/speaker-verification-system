@@ -72,7 +72,7 @@
   }
 
   .page-content-with-nav {
-    @apply pb-24 md:pb-10;
+    @apply pb-24 pt-4 sm:pt-6 md:pb-10;
   }
 
   .card {

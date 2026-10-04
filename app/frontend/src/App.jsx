@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AdminRoute from './components/AdminRoute.jsx'
+import EnrolledRoute from './components/EnrolledRoute.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import { useAuth } from './context/AuthContext.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
@@ -41,7 +42,9 @@ function App() {
         path="/verification"
         element={
           <ProtectedRoute>
-            <Verification />
+            <EnrolledRoute>
+              <Verification />
+            </EnrolledRoute>
           </ProtectedRoute>
         }
       />

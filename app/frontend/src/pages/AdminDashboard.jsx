@@ -359,6 +359,7 @@ function AdminDashboard() {
 
             <Recorder
               key={recorderKey}
+              readsSentence
               onRecordingChange={setRecording}
               onRecorderError={(message) =>
                 setStatusMessage(message ? { type: 'error', text: message } : { type: '', text: '' })

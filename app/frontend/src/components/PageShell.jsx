@@ -10,6 +10,7 @@ function PageShell({
   narrow = false,
   showNav = false,
   showFooter = true,
+  showVoiceLogin = true,
 }) {
   const variantClass =
     variant === 'auth' ? 'page-auth' : variant === 'admin' ? 'page-admin' : 'page-app'
@@ -37,7 +38,13 @@ function PageShell({
 
       <div className={`${contentClass} flex-1`}>{children}</div>
 
-      {showFooter && <AppFooter variant={footerVariant} withBottomNav={showNav} />}
+      {showFooter && (
+        <AppFooter
+          variant={footerVariant}
+          withBottomNav={showNav}
+          showVoiceLogin={showVoiceLogin}
+        />
+      )}
     </main>
   )
 }

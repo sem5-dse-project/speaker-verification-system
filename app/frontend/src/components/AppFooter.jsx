@@ -4,7 +4,7 @@ import BrandMark from './BrandMark.jsx'
 
 const CURRENT_YEAR = new Date().getFullYear()
 
-function AppFooter({ variant = 'app', withBottomNav = false }) {
+function AppFooter({ variant = 'app', withBottomNav = false, showVoiceLogin = true }) {
   const footerClass = [
     'app-footer',
     variant === 'auth' ? 'app-footer-auth' : '',
@@ -73,9 +73,11 @@ function AppFooter({ variant = 'app', withBottomNav = false }) {
           <Link to="/verification" className="link-primary">
             Verify
           </Link>
-          <Link to="/voice-login" className="link-primary">
-            Voice login
-          </Link>
+          {showVoiceLogin && (
+            <Link to="/voice-login" className="link-primary">
+              Voice login
+            </Link>
+          )}
         </nav>
       </div>
     </footer>

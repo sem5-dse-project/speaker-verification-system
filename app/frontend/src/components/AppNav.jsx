@@ -25,6 +25,26 @@ function AppNav() {
 
   return (
     <>
+      <header className="app-nav-top md:hidden">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
+          <NavLink to="/dashboard" className="brand-mark-link min-w-0">
+            <BrandMark size="sm" className="brand-mark-compact" />
+          </NavLink>
+          <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="btn-secondary w-auto shrink-0 px-3 py-2"
+              aria-label="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
       <header className="app-nav-top hidden md:block">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <NavLink to="/dashboard" className="brand-mark-link">
