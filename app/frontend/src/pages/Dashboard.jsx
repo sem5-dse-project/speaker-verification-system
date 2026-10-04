@@ -91,7 +91,7 @@ function Dashboard() {
   const lastLog = verificationLogs[0]
 
   return (
-    <PageShell narrow showNav>
+    <PageShell narrow showNav showVoiceLogin={isEnrolled}>
       {loading ? (
         <DashboardSkeleton />
       ) : (
@@ -160,13 +160,15 @@ function Dashboard() {
             description="Live check with replay & speaker match"
             variant="muted"
           />
-          <FeatureTile
-            to="/voice-login"
-            icon={Sparkles}
-            title="Login with Voice"
-            description="Identify by voice, confirm with password"
-            variant="muted"
-          />
+          {isEnrolled && (
+            <FeatureTile
+              to="/voice-login"
+              icon={Sparkles}
+              title="Login with Voice"
+              description="Identify by voice, confirm with password"
+              variant="muted"
+            />
+          )}
         </section>
 
         <section className="tips-strip">
