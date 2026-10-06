@@ -13,25 +13,13 @@ const formatSeconds = (seconds) => {
 
 const emptyLevels = () => Array(BAR_COUNT).fill(0.08)
 
-export const TARGET_RECORDING_SECONDS = 4
 const MIN_RECORDING_SECONDS = 0.5
-
-export function reachedRecordingLimit(
-  totalSamples,
-  sampleRate,
-  targetSeconds = TARGET_RECORDING_SECONDS,
-) {
-  if (!sampleRate || sampleRate <= 0) {
-    return false
-  }
-  return totalSamples >= sampleRate * targetSeconds
-}
 
 function idleHint(readsSentence) {
   if (readsSentence) {
-    return 'Read the sentence aloud for about 4 seconds in a quiet room. Recording stops automatically.'
+    return 'Read the sentence aloud in a quiet room, then stop the recording.'
   }
-  return 'Speak for about 4 seconds in a quiet room. Recording stops automatically.'
+  return 'Speak clearly in a quiet room, then stop the recording.'
 }
 
 function Recorder({ onRecordingChange, onRecorderError, readsSentence = false }) {
@@ -50,7 +38,7 @@ function Recorder({ onRecordingChange, onRecorderError, readsSentence = false })
   const sampleRateRef = useRef(16000)
   const recordingRef = useRef(false)
   const stoppingRef = useRef(false)
-  const stopRef = useRef(() => {})
+  const timingRef = useRef(false)
 
   const hasRecording = useMemo(() => Boolean(audioUrl), [audioUrl])
   const isRecording = status === 'recording'
@@ -100,17 +88,23 @@ function Recorder({ onRecordingChange, onRecorderError, readsSentence = false })
     setLevels((previous) => [...previous.slice(1), normalized])
   }
 
-  const startTimer = () => {
-    timerRef.current = setInterval(() => {
-      setSeconds((previous) => previous + 1)
-    }, 1000)
-  }
-
   const stopTimer = () => {
+    timingRef.current = false
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
     }
+  }
+
+  const startTimer = () => {
+    stopTimer()
+    timingRef.current = true
+    timerRef.current = setInterval(() => {
+      if (!timingRef.current) {
+        return
+      }
+      setSeconds((previous) => previous + 1)
+    }, 1000)
   }
 
   const handleStartRecording = async () => {
@@ -165,12 +159,6 @@ function Recorder({ onRecordingChange, onRecorderError, readsSentence = false })
           sum += input[index] * input[index]
         }
         pushLevel(Math.sqrt(sum / input.length))
-
-        const totalSamples = pcmChunksRef.current.reduce((total, chunk) => total + chunk.length, 0)
-        if (reachedRecordingLimit(totalSamples, sampleRateRef.current)) {
-          recordingRef.current = false
-          window.setTimeout(() => stopRef.current(), 0)
-        }
       }
 
       source.connect(processor)
@@ -223,12 +211,7 @@ function Recorder({ onRecordingChange, onRecorderError, readsSentence = false })
         return
       }
 
-      setSeconds(
-        Math.min(
-          TARGET_RECORDING_SECONDS,
-          Math.max(1, Math.round(totalLength / sampleRateRef.current)),
-        ),
-      )
+      setSeconds(Math.max(1, Math.round(totalLength / sampleRateRef.current)))
 
       const merged = new Float32Array(totalLength)
       let offset = 0
@@ -254,8 +237,6 @@ function Recorder({ onRecordingChange, onRecorderError, readsSentence = false })
       stoppingRef.current = false
     }
   }
-
-  stopRef.current = handleStopRecording
 
   const handlePlayRecording = async () => {
     if (audioRef.current && hasRecording) {
@@ -295,14 +276,12 @@ function Recorder({ onRecordingChange, onRecorderError, readsSentence = false })
 
       <StatusBadge status={status} />
       <p className="text-2xl font-bold tabular-nums text-slate-900 sm:text-3xl dark:text-slate-100">
-        {isRecording
-          ? `${formatSeconds(seconds)} / ${formatSeconds(TARGET_RECORDING_SECONDS)}`
-          : formatSeconds(seconds)}
+        {formatSeconds(seconds)}
       </p>
 
       <p className="max-w-sm text-xs text-subtle sm:text-sm">
         {isRecording
-          ? 'Speak naturally. Recording stops at 4 seconds.'
+          ? 'Speak naturally, then press stop when you are finished.'
           : hasRecording
             ? 'Recording captured. Play it back, or record again.'
             : idleHint(readsSentence)}

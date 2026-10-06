@@ -158,11 +158,6 @@ function describeSpeakerStage(result) {
       'Speaker verification',
       'neutral',
       reasonMap[decision] || 'Speaker verification was skipped for this sample.',
-      [
-        buildMetric('Score', result?.score),
-        buildMetric('Threshold', result?.threshold),
-        buildMetric('Decision', decision, 0),
-      ],
     )
   }
 

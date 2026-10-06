@@ -46,7 +46,8 @@ function VerificationVerdict({ decision, score }) {
 
   const config = VERDICT_CONFIG[decision] || VERDICT_CONFIG.UNCERTAIN
   const Icon = config.icon
-  const scoreText = typeof score === 'number' ? score.toFixed(3) : null
+  const showSimilarity = decision === 'ACCEPT' || decision === 'REJECT'
+  const scoreText = showSimilarity && typeof score === 'number' ? score.toFixed(3) : null
 
   return (
     <div className={`verdict-banner ${config.className}`}>
