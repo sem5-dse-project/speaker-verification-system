@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ShieldCheck } from 'lucide-react'
 import PageShell from '../components/PageShell.jsx'
 import PageHeader from '../components/PageHeader.jsx'
+import SentenceCard from '../components/SentenceCard.jsx'
 import Recorder from '../components/Recorder.jsx'
 import PrimaryButton from '../components/PrimaryButton.jsx'
 import VerificationVerdict from '../components/VerificationVerdict.jsx'
@@ -9,7 +10,32 @@ import VerificationStepper from '../components/VerificationStepper.jsx'
 import api from '../services/api.js'
 import { formatVerificationResult } from '../utils/verificationResult.js'
 
+const SENTENCES = [
+  'The quick brown fox jumps over the lazy dog.',
+  'Please verify my identity with this spoken sentence.',
+  'Blue skies often follow a quiet rainy morning.',
+  'Consistent practice improves confidence and clarity.',
+  'Security begins with careful attention to detail.',
+  'Today I will speak clearly for voice verification.',
+  'Modern systems rely on accurate user authentication.',
+  'A calm voice in a quiet room improves quality.',
+  'Reliable verification depends on clean audio input.',
+  'My voice is unique and ready for verification.',
+  'Clear pronunciation helps the check hear me clearly.',
+]
+
+const pickRandomSentence = (exclude = null) => {
+  let next = SENTENCES[Math.floor(Math.random() * SENTENCES.length)]
+  if (SENTENCES.length > 1 && exclude) {
+    while (next === exclude) {
+      next = SENTENCES[Math.floor(Math.random() * SENTENCES.length)]
+    }
+  }
+  return next
+}
+
 function Verification() {
+  const [sentence, setSentence] = useState(() => pickRandomSentence())
   const [recording, setRecording] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [statusMessage, setStatusMessage] = useState({
@@ -60,10 +86,16 @@ function Verification() {
         <PageHeader
           icon={ShieldCheck}
           title="Voice Verification"
-          subtitle="Record your voice for a multi-stage security scan: speech detection, replay screening, synthetic checks, then speaker matching."
+          subtitle="Read the sentence aloud, then submit the recording for replay screening and speaker matching."
+        />
+
+        <SentenceCard
+          sentence={sentence}
+          onGenerateSentence={() => setSentence((previous) => pickRandomSentence(previous))}
         />
 
         <Recorder
+          readsSentence
           onRecordingChange={setRecording}
           onRecorderError={(message) =>
             setStatusMessage(

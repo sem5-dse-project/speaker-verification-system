@@ -134,6 +134,7 @@ describe('formatVerificationResult', () => {
           label: 'Speaker verification',
           status: 'neutral',
           summary: expect.stringContaining('skipped'),
+          metrics: [],
         }),
       ]),
     )
