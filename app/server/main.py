@@ -35,7 +35,12 @@ from ml_server.config import (
     REPLAY_THRESHOLD,
     WAVEUNET_CHECKPOINT,
 )
-from ml_server.ecapa import embed_audio_list, embed_audio_list_fused, load_ecapa_encoder
+from ml_server.ecapa import (
+    EcapaFrames,
+    embed_audio_list,
+    embed_audio_list_fused,
+    load_ecapa_encoder,
+)
 from ml_server.enhancement import get_enhancer
 from ml_server.fusion import load_fusion_model
 from ml_server.schemas import (
@@ -49,15 +54,24 @@ from ml_server.scoring import average_template, cosine_similarity, decide
 
 # --- Global variables (module level) ---
 _encoder = None
+_ecf = None
 _enhancer = None
 _fusion_model = None
 
 
 def get_encoder():
-    global _encoder
+    global _encoder, _ecf
     if _encoder is None:
         _encoder = load_ecapa_encoder(device=DEVICE)
+    if _ecf is None:  # <-- separate check
+        _ecf = EcapaFrames(_encoder)
     return _encoder
+
+
+def get_ecapa_frames():
+    """Return the EcapaFrames wrapper, initialising the encoder if needed."""
+    get_encoder()
+    return _ecf
 
 
 @asynccontextmanager
@@ -65,6 +79,12 @@ async def lifespan(_app: FastAPI):
     global _enhancer, _fusion_model
     print("[lifespan] start", flush=True)
 
+    # ---- 1. ECAPA + frame splitter (must be first) ----
+    encoder = get_encoder()  # <-- call it here
+    ecf = get_ecapa_frames()  # <-- local alias, guaranteed non-None
+    print(f"[lifespan] ECAPA ready; EcapaFrames id={id(ecf)}", flush=True)
+
+    # ---- 2. Enhancer ----
     if ENHANCEMENT_MODE == "webrtc":
         print("[lifespan] loading WebRTC enhancer", flush=True)
         try:
@@ -75,35 +95,40 @@ async def lifespan(_app: FastAPI):
     elif ENHANCEMENT_MODE == "waveunet":
         try:
             _enhancer = get_enhancer("waveunet", checkpoint_path=WAVEUNET_CHECKPOINT, device=DEVICE)
-            print(f"Wave-U-Net enhancer loaded from {WAVEUNET_CHECKPOINT}")
+            print(f"Wave-U-Net enhancer loaded from {WAVEUNET_CHECKPOINT}", flush=True)
         except Exception as e:
-            print(f"Wave-U-Net enhancer failed: {e}. Falling back to pass-through.")
+            print(f"Wave-U-Net enhancer failed: {e}. Falling back to pass-through.", flush=True)
             _enhancer = get_enhancer("none")
     else:
         _enhancer = get_enhancer("none")
     print("[lifespan] enhancer ready", flush=True)
 
+    # ---- 3. Fusion ----
     _fusion_model = None
     if FUSION_ENABLED and FUSION_MODEL_PATH.exists():
         print(f"[lifespan] loading fusion from {FUSION_MODEL_PATH}", flush=True)
         try:
             _fusion_model = load_fusion_model(
-                FUSION_MODEL_PATH, model_type=FUSION_MODEL_TYPE, device=DEVICE
+                FUSION_MODEL_PATH,
+                model_type=FUSION_MODEL_TYPE,
+                device=DEVICE,
+                ecapa_frames=ecf,  # <-- LOCAL, not _ecf
+                d=192,
+                n_heads=4,
+                n_layers=2,
+                pool=4,
+                dropout=0.1,
+                n_groups=1,
+                emb_dim=192,
+                use_delta=True,
             )
-            print("[lifespan] fusion ready", flush=True)
+            # ... startup assertion block (unchanged) ...
         except Exception as e:
             print(f"Fusion load failed: {e}. Disabling fusion.", flush=True)
             _fusion_model = None
-    else:
-        print(
-            f"[lifespan] fusion skipped (enabled={FUSION_ENABLED}, "
-            f"path_exists={FUSION_MODEL_PATH.exists()})",
-            flush=True,
-        )
 
     print("[lifespan] yielding", flush=True)
     yield
-    # cleanup (optional)
 
 
 app = FastAPI(
@@ -241,7 +266,14 @@ async def embed(
         encoder = get_encoder()
 
         if _fusion_model is not None:
-            embs = embed_audio_list_fused(encoder, waves, _enhancer, _fusion_model, device=DEVICE)
+            embs = embed_audio_list_fused(
+                encoder,
+                waves,
+                _enhancer,
+                _fusion_model,
+                device=DEVICE,
+                ecapa_frames=get_ecapa_frames(),
+            )
         else:
             embs = embed_audio_list(encoder, waves, device=DEVICE)
 
@@ -344,7 +376,12 @@ async def verify(
         # --- Use the same embedding pipeline as enrollment ---
         if _fusion_model is not None:
             probes = embed_audio_list_fused(
-                encoder, [wave], _enhancer, _fusion_model, device=DEVICE
+                encoder,
+                [wave],
+                _enhancer,
+                _fusion_model,
+                device=DEVICE,
+                ecapa_frames=get_ecapa_frames(),
             )
         else:
             probes = embed_audio_list(encoder, [wave], device=DEVICE)
