@@ -42,7 +42,9 @@ services:
       FUSION_MODEL_PATH: ${FUSION_MODEL_PATH:-./checkpoints/sa_fusion_best.pt}
       WAVEUNET_CHECKPOINT: ${WAVEUNET_CHECKPOINT:-./checkpoints/waveunet_finetuned_v4_best.pt}
       ECAPA_SAVEDIR: /app/pretrained_models/spkrec-ecapa-voxceleb
-      REPLAY_CHECKPOINT: /replay-cnn-baseline/experiments/inverted_mel_mixed_2017_pa2019/runs/inverted_mel_mixed/best_inverted_mel_mixed_2017_pa2019.pt
+      REPLAY_CHECKPOINT: /replay-cnn-baseline/experiments/inverted_mel/runs/mel/best_replay_cnn.pt
+      REPLAY_T_LOW: "0.025"
+      REPLAY_T_HIGH: "0.144"
       LA_CHECKPOINT: /replay-cnn-baseline/experiments/lfcc_la2019/runs/lfcc_la/best_lfcc_la2019.pt
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080,http://localhost}
     ports:
