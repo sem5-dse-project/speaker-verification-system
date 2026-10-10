@@ -103,6 +103,9 @@ lightning_logs/
 .ipynb_checkpoints/
 
 SASVC2022_Baseline/
+video-demo/
+docs/final-report/
+docs/one-slide
 
 test_resources/
 deploy_cd_key
